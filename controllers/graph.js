@@ -82,7 +82,7 @@ async function upload_commits(path_commits) {
     // Create a Driver Instance
   const uri="neo4j+s://8c4cdf6a.databases.neo4j.io"
   const user="neo4j"
-  const password="YQYd0nFpcY5jbkRx3N5wiOp-sR784CgITwvsfjx_j-k"
+  const password="exdev2001"
 
   
   // To learn more about the driver: https://neo4j.com/docs/javascript-manual/current/client-applications/#js-driver-driver-object
