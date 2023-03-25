@@ -54,29 +54,25 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch ) => {
         await check_and_ceate_file (tree);   
         await check_and_ceate_file (log); 
 
-        // Similateniously collect every required data
-        const commits_fetched = get_commits(repo_owner, repo_name, commits, log)
-        const issues_and_prs_fetched = get_issues_and_prs(repo_owner, repo_name, issues, pulls, log, tokens);
-        const tree_fetched = get_tree(repo_owner, repo_name, branch,  tree, log, tokens);
+        // // Similateniously collect every required data
+        // const commits_fetched = get_commits(repo_owner, repo_name, commits, log)
+        // const issues_and_prs_fetched = get_issues_and_prs(repo_owner, repo_name, issues, pulls, log, tokens);
+        // const tree_fetched = get_tree(repo_owner, repo_name, branch,  tree, log, tokens);
         
-        // Wait for data fetching to end
-        await commits_fetched;
-        await issues_and_prs_fetched;
-        await tree_fetched;
+        // // Wait for data fetching to end
+        // await commits_fetched;
+        // await issues_and_prs_fetched;
+        // await tree_fetched;
 
         console.log("Data has been fetched");
 
         /** THE DATA HAS BEEN FETCHED **/
-        await upload_commits(commits)
+        await create_graph(commits, tree)
 
         // Update the creating status of the repository
         fetch(`${process.env.SERVER_BASE_URL}/repos/${repo_owner}/${repo_name}/update-status`, {
           method: "POST",
-          body: JSON.stringify(
-            {
-              "newStatus" : "ready"
-            }
-          ),
+          body: JSON.stringify({"newStatus" : "ready"}),
           headers: {
               "Content-type": "application/json; charset=UTF-8"
           }
@@ -91,7 +87,7 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch ) => {
 };
 
 // GRAPH CREATOR
-async function upload_commits(path_commits) {
+async function create_graph(path_commits, path_tree) {
     // Create a Driver Instance
   const uri="neo4j+s://8c4cdf6a.databases.neo4j.io"
   const user="neo4j"
@@ -102,12 +98,44 @@ async function upload_commits(path_commits) {
   const driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
   const session = driver.session()
 
-  try {
+  // given a path, returns the path minus the last directory
+  function getFolderPath(filePath) {
+    let pathArray = filePath.split("/");
+    pathArray.pop();
+  
+    if (pathArray.length == 0) return "" 
+    else return pathArray.join("/");
+  }
 
+  try {
+    // nodes
     let authors = new Set()
     let commits = new Set()
+    let folders = new Set();
+    let files = new Set()
+
+    // relations
     let COMMITED_BY = new Set()
-    let filesAdded = new Set()
+    let INSIDE = new Set();
+    let RELATION_FOLDER_FOLDER = new Set();
+
+    let folderData = JSON.parse(fs.readFileSync(path_tree))["tree"];
+
+    folderData.forEach((element) => {
+      if (element.type == "tree") {
+        folders.add(element);
+      }
+    });
+
+    folders.forEach((folder) => {
+      if (folder.path.includes("/")) {
+        var parentFolderPath = getFolderPath(folder.path); //for example perceval/backend returns perceval
+        if (parentFolderPath != "") {
+          RELATION_FOLDER_FOLDER.add([parentFolderPath, folder.path]);
+        }
+      }
+    });
+
 
     const commitsLines = fs.readFileSync(path_commits, 'utf-8');
     commitsLines.split(/\r?\n/).forEach(line =>  {
@@ -126,7 +154,7 @@ async function upload_commits(path_commits) {
             COMMITED_BY.add([authorStr, commit["data"]["commit"]])
   
             commit["data"]["files"].forEach( file =>{
-                filesAdded.add((commit["data"]["commit"], file["file"]))
+                files.add((commit["data"]["commit"], file["file"]))
             })
 
         }
@@ -136,88 +164,151 @@ async function upload_commits(path_commits) {
     console.log(authors);
     console.log(commits);
     console.log(COMMITED_BY);
-    console.log(filesAdded);
+    console.log(files);
 
     for (const author of authors) {
-        const res = await session.executeWrite(
-          tx => tx.run(
-            `CREATE (u:Author {authorName: $author})
-             RETURN u
-            `,
-            { author }
-          )
+      const res = await session.executeWrite(
+        tx => tx.run(
+          `CREATE (u:Author {authorName: $author})
+           RETURN u
+          `,
+        { author }
         )
-      }
+      )
+    }
   
-      console.log("Authors Done")
+    console.log("Authors Done")
   
-      for (const commit of commits) {
-        const res = await session.executeWrite(
-          tx => tx.run(
-            `
-              CREATE (c:Commit {
-                hash: $commit
-              })
-              RETURN c
-            `,
-            { commit }
-          )
+    for (const commit of commits) {
+      const res = await session.executeWrite(
+        tx => tx.run(
+          `
+            CREATE (c:Commit {
+              hash: $commit
+            })
+            RETURN c
+          `,
+          { commit }
         )
-      }
-      console.log("Commits Done")
-  
-      for (const commitData of COMMITED_BY) {
-        let authorD = commitData[0]
-        let commitD = commitData[1]
-        console.log(authorD);
-        console.log(commitD);
-        let weight = 1
-        const res = await session.executeWrite(
-          tx => tx.run(
-            `
-              MATCH (u:Author {authorName: $authorD})
-              MATCH (m:Commit {hash: $commitD})
-  
-              MERGE (m)-[r:COMMITED_BY]->(u)
-              SET r.weight = $weight,
-                  r.timestamp = timestamp()
-  
-            `,
-            { authorD, commitD, weight }
-          )
-        )
-      }
-  
-      console.log("Authors-Commit Relation Done")
-  
-      for (const fileAdded of filesAdded) {
-        let commitHash = fileAdded[0]
-        let path = fileAdded[1]
-        let weight = 1
-        const res = await session.executeWrite(
-          tx => tx.run(
-            `
-              MATCH (c:Commit {hash: $commitHash})
-              MATCH (f:File {path: $path})
-  
-              MERGE (c)-[r:ADDED_FILE]->(f)
-              SET r.weight = $weight,
-                  r.timestamp = timestamp()
-  
-            `,
-            { commitHash, path, weight }
-          )
-        )
-      }
-  
-      console.log("Authors-File Add Relation Done")
-  
-      
-  
-      console.log("Done")
+      )
+    }
+    console.log("Commits Done")
 
-   
+    for (const file of files) {
+      console.log('====================================');
+      console.log(file);
+      console.log('====================================');
+      const res = await session.executeWrite((tx) =>
+        tx.run(
+          `
+            CREATE (c:File {
+              path: $file
+            })
+            RETURN c
+          `,
+          { file }
+        )
+      );
+    }
 
+    console.log("Files Done");
+
+    for (const folder of folders) {
+      let folderPath = folder.path;
+      const res = await session.executeWrite((tx) =>
+        tx.run(
+          `
+            CREATE (c:Folder {
+              path: $folderPath
+            })
+            RETURN c
+          `,
+          { folderPath }
+        )
+      );
+    }
+
+    console.log("Folders Done");
+
+    for (const relation_ff of RELATION_FOLDER_FOLDER) {
+      let parentFolderData = relation_ff[0];
+      let folderData = relation_ff[1];
+      const res = await session.executeWrite((tx) =>
+        tx.run(
+          `
+        MATCH (u:Folder {path: $parentFolderData})
+        MATCH (m:Folder {path: $folderData})
+
+        MERGE (m)-[:INSIDE]->(u)
+
+      `,
+          { parentFolderData, folderData }
+        )
+      );
+    }
+    console.log("Folder Folder Relation Done");
+
+    for (const insideData of INSIDE) {
+      let folderData = insideData[0];
+      let fileData = insideData[1];
+      const res = await session.executeWrite((tx) =>
+        tx.run(
+          `
+            MATCH (u:Folder {path: $folderData})
+            MATCH (m:File {path: $fileData})
+
+            MERGE (m)-[:INSIDE]->(u)
+
+          `,
+          { folderData, fileData }
+        )
+      );
+    }
+    console.log("Folder-File Relation Done");
+
+    for (const commitData of COMMITED_BY) {
+      let authorD = commitData[0];
+      let commitD = commitData[1];
+      let weight = 1;
+      const res = await session.executeWrite((tx) =>
+        tx.run(
+          `
+            MATCH (u:Author {authorName: $authorD})
+            MATCH (m:Commit {hash: $commitD})
+
+            MERGE (m)-[r:COMMITED_BY]->(u)
+            SET r.weight = $weight,
+                r.timestamp = timestamp()
+
+          `,
+          { authorD, commitD, weight }
+        )
+      );
+    }
+    console.log("Authors-Commit Relation Done");
+  
+    for (const file of files) {
+      let commitHash = file[0]
+      let path = file[1]
+      let weight = 1
+      const res = await session.executeWrite(
+        tx => tx.run(
+          `
+            MATCH (c:Commit {hash: $commitHash})
+            MATCH (f:File {path: $path})
+
+            MERGE (c)-[r:ADDED_FILE]->(f)
+            SET r.weight = $weight,
+                r.timestamp = timestamp()
+
+          `,
+          { commitHash, path, weight }
+        )
+      )
+    }
+
+    console.log("Authors-File Add Relation Done")
+    console.log("Done")
 
     await session.close()
 

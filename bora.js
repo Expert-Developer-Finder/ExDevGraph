@@ -75,6 +75,10 @@ async function main() {
       }
     });
 
+    // OK 
+
+
+    
     folders.forEach((folder) => {
       //console.log(folder.path);
       if (folder.path.includes("/")) {
