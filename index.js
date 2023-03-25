@@ -14,6 +14,12 @@ app.use(bodyParser.json({ limit: "30mb", extended: "true" }));
 app.use(bodyParser.urlencoded({ limit: "30mb", extended: "true" }));
 app.use(bodyParser.json()); // for parsing application/json
 app.use(cors());
+
+app.get("/", (req, res)=> {
+    return res.status(200).json("Hi");
+})
+
+
 app.use("/graph", graphRouter);
 
 

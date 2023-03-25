@@ -69,6 +69,19 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch ) => {
         /** THE DATA HAS BEEN FETCHED **/
         await upload_commits(commits)
 
+        // Update the creating status of the repository
+        fetch(`${process.env.SERVER_BASE_URL}/repos/${repo_owner}/${repo_name}/update-status`, {
+          method: "POST",
+          body: JSON.stringify(
+            {
+              "newStatus" : "ready"
+            }
+          ),
+          headers: {
+              "Content-type": "application/json; charset=UTF-8"
+          }
+        }) 
+
     } catch (error) {
         // Something has gone wrong during the data retrieval!
         // TODO: mail to us
