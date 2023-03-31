@@ -1,0 +1,30 @@
+//tüm file için graph visualization file,commit ve author 
+MATCH (f:File{path:"perceval/backends/core/jenkins.py"}) WITH f MATCH(f)<-[mf:MODIFIED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author)  return f,c,a,cb,mf
+
+//tüm folder için graph visualization folder, file,commit ve author ile beraber
+MATCH(f:Folder{path:"perceval/backends/core"}) WITH f MATCH(f) <-[i:INSIDE]-(fi:File)<-[mf:MODIFIED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author) return f,i,fi,mf,c,cb,a
+
+
+//tüm folder için top3 max commitli lavuk
+MATCH(f:Folder{path:"perceval/backends/core"}) WITH f MATCH(f) <-[i:INSIDE]-(fi:File)<-[mf:MODIFIED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author)  return count(cb) as commit_count, a.authorName as commited_by ORDER BY count(cb) DESC limit 3
+
+
+MATCH (f:File{path:"perceval/backends/core/jenkins.py"}) WITH f MATCH(f)<-[mf:MODIFIED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author)  return count(cb) as commited_by, a.authorName as author_name 
+
+
+MATCH (f:File{path:"perceval/backends/core/jenkins.py"})-[r]-(c)-[q]-(a:Author) return f,c,r,q,a
+
+//sırala commit sayılarına göre
+MATCH (f:File{path:"perceval/backends/core/jenkins.py"}) WITH f MATCH(f)<-[mf:MODIFIED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author)  return count(cb) as commited_by, a.authorName as author_name ORDER BY count(cb) DESC
+
+//top3 yi returnle commit sayısına göre
+MATCH (f:File{path:"perceval/backends/core/jenkins.py"}) WITH f MATCH(f)<-[mf:MODIFIED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author)  return count(cb) as commit_count, a.authorName as commited_by ORDER BY count(cb) DESC limit 3
+
+//total commit count in file
+MATCH (f:File{path:"perceval/backends/core/jenkins.py"}) WITH f MATCH(f)<-[mf:MODIFIED_FILE]-(c:Commit)  return count(c) as total_file_commit_count
+
+//total commit count in folder
+MATCH(f:Folder{path:"perceval/backends/core"}) WITH f MATCH(f) <-[i:INSIDE]-(fi:File)<-[mf:MODIFIED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author)  return count(c) as total_file_commit_count
+
+//her author commit sayısı ve ismi, ve bunların graph visualizationunu returnle
+MATCH (f:File{path:"perceval/backends/core/jenkins.py"}) WITH f MATCH(f)<-[mf:MODIFIED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author)  return count(cb) as commited_by, a.authorName as author_name, cb, a as author, c as commit ORDER BY count(cb) DESC
