@@ -2,13 +2,17 @@ import fs from 'fs'
 import fss from "fs/promises";
 import axios from  'axios';
 import {spawn} from 'child_process'
-import neo4j, { Node, Relationship, Integer } from 'neo4j-driver'
+import neo4j, { Node, Relationship, Integer, auth } from 'neo4j-driver'
 const ISSUE_NO_PER_FETCH = 100; // This can be at tops 100
 
 // HELPERS
+
+
 function sleep(time) {
     return new Promise(resolve => setTimeout(resolve, time));
 } 
+
+// bla
 
 const check_and_ceate_file = async (path) => {
     try {
@@ -41,33 +45,37 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch ) => {
             if (err) return res.status(404).json({"message": err.message});
         })
 
-        // Make sure the files exists, else create the files
+        // // Make sure the files exists, else create the files
+        // //const commitsREST = `./data/${repo_owner}/${repo_name}/commits_REST.json`;
         const commits = `./data/${repo_owner}/${repo_name}/commits.json`;
         const issues = `./data/${repo_owner}/${repo_name}/issues.json`;
         const pulls = `./data/${repo_owner}/${repo_name}/pulls.json`;
         const tree = `./data/${repo_owner}/${repo_name}/tree.json`;
         const log = `./data/${repo_owner}/${repo_name}/log.txt`;
 
+        // //await check_and_ceate_file (commitsREST); 
         await check_and_ceate_file (commits); 
         await check_and_ceate_file (issues);  
         await check_and_ceate_file (pulls);   
         await check_and_ceate_file (tree);   
         await check_and_ceate_file (log); 
 
-        // // Similateniously collect every required data
-        // const commits_fetched = get_commits(repo_owner, repo_name, commits, log)
-        // const issues_and_prs_fetched = get_issues_and_prs(repo_owner, repo_name, issues, pulls, log, tokens);
-        // const tree_fetched = get_tree(repo_owner, repo_name, branch,  tree, log, tokens);
+        // Similateniously collect every required data
+        //const commits_REST_fetched = get_commits_REST(repo_owner, repo_name, commitsREST, log, tokens);
+        const commits_fetched = get_commits(repo_owner, repo_name, commits, log, tokens)
+        const issues_and_prs_fetched = get_issues_and_prs(repo_owner, repo_name, issues, pulls, log, tokens);
+        const tree_fetched = get_tree(repo_owner, repo_name, branch,  tree, log, tokens);
         
-        // // Wait for data fetching to end
-        // await commits_fetched;
-        // await issues_and_prs_fetched;
-        // await tree_fetched;
+        // Wait for data fetching to end
+        // await commits_REST_fetched;
+        await commits_fetched;
+        await issues_and_prs_fetched;
+        await tree_fetched;
 
         console.log("Data has been fetched");
 
         /** THE DATA HAS BEEN FETCHED **/
-        await create_graph(commits, tree)
+        await upload_graph(commits, tree)
 
         // Update the creating status of the repository
         fetch(`${process.env.SERVER_BASE_URL}/repos/${repo_owner}/${repo_name}/update-status`, {
@@ -87,12 +95,15 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch ) => {
 };
 
 // GRAPH CREATOR
-async function create_graph(path_commits, path_tree) {
+async function upload_graph(path_commits, path_tree) {
     // Create a Driver Instance
   const uri="neo4j+s://8c4cdf6a.databases.neo4j.io"
   const user="neo4j"
   const password="exdev2001"
 
+
+  console.log("Uploading graph");
+  console.log('====================================');
   
   // To learn more about the driver: https://neo4j.com/docs/javascript-manual/current/client-applications/#js-driver-driver-object
   const driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
@@ -100,11 +111,27 @@ async function create_graph(path_commits, path_tree) {
 
   // given a path, returns the path minus the last directory
   function getFolderPath(filePath) {
+    // Split the file path into an array of directories and file name
     let pathArray = filePath.split("/");
-    pathArray.pop();
-  
-    if (pathArray.length == 0) return "" 
-    else return pathArray.join("/");
+
+    // Remove the empty string at the beginning of the array
+    //pathArray.shift();
+
+    //Get last element
+    let last = pathArray[pathArray.length - 1];
+
+    if (last.includes(".")) {
+      pathArray.pop();
+    } else {
+      pathArray.pop();
+    }
+
+    if (pathArray.length == 0) return "";
+
+    // Join the remaining directories into a new file path string
+    let newFilePath = pathArray.join("/");
+
+    return newFilePath;
   }
 
   try {
@@ -154,17 +181,21 @@ async function create_graph(path_commits, path_tree) {
             COMMITED_BY.add([authorStr, commit["data"]["commit"]])
   
             commit["data"]["files"].forEach( file =>{
-                files.add((commit["data"]["commit"], file["file"]))
+                files.add([commit["data"]["commit"], file["file"]])
+
+                var folderPath = getFolderPath(file["file"]);
+                INSIDE.add([folderPath, file["file"]]);
             })
+        
 
         }
 
     });
 
-    console.log(authors);
-    console.log(commits);
-    console.log(COMMITED_BY);
-    console.log(files);
+    // console.log(authors);
+    // console.log(commits);
+    // console.log(COMMITED_BY);
+    //console.log(files);
 
     for (const author of authors) {
       const res = await session.executeWrite(
@@ -179,6 +210,9 @@ async function create_graph(path_commits, path_tree) {
   
     console.log("Authors Done")
   
+    console.log('====================================')
+    console.log("Commits size: " + commits.size);
+
     for (const commit of commits) {
       const res = await session.executeWrite(
         tx => tx.run(
@@ -195,18 +229,18 @@ async function create_graph(path_commits, path_tree) {
     console.log("Commits Done")
 
     for (const file of files) {
-      console.log('====================================');
       console.log(file);
-      console.log('====================================');
+      let fileData = file[1];
+
       const res = await session.executeWrite((tx) =>
         tx.run(
           `
             CREATE (c:File {
-              path: $file
+              path: $fileData
             })
             RETURN c
           `,
-          { file }
+          { fileData }
         )
       );
     }
@@ -239,7 +273,7 @@ async function create_graph(path_commits, path_tree) {
         MATCH (u:Folder {path: $parentFolderData})
         MATCH (m:Folder {path: $folderData})
 
-        MERGE (m)-[:INSIDE]->(u)
+        MERGE (m)-[:INSIDE_FOFO]->(u)
 
       `,
           { parentFolderData, folderData }
@@ -248,16 +282,18 @@ async function create_graph(path_commits, path_tree) {
     }
     console.log("Folder Folder Relation Done");
 
+    console.log(INSIDE);
     for (const insideData of INSIDE) {
       let folderData = insideData[0];
       let fileData = insideData[1];
+
       const res = await session.executeWrite((tx) =>
         tx.run(
           `
             MATCH (u:Folder {path: $folderData})
             MATCH (m:File {path: $fileData})
 
-            MERGE (m)-[:INSIDE]->(u)
+            MERGE (m)-[:INSIDE_FOFI]->(u)
 
           `,
           { folderData, fileData }
@@ -288,6 +324,8 @@ async function create_graph(path_commits, path_tree) {
     console.log("Authors-Commit Relation Done");
   
     for (const file of files) {
+
+      console.log(file);
       let commitHash = file[0]
       let path = file[1]
       let weight = 1
@@ -307,18 +345,16 @@ async function create_graph(path_commits, path_tree) {
       )
     }
 
-    console.log("Authors-File Add Relation Done")
-    console.log("Done")
+    console.log("commit-File Add Relation Done")
 
     await session.close()
+    console.log("Done")
 
   }
   catch (error) {
     console.log(error.message);
   }
 }
-
-
 
 // DATA FETCHERS
 function get_commits(repo_owner, repo_name, path_commits, path_log) {
@@ -475,9 +511,116 @@ async function get_issues_and_prs(repo_owner, repo_name, path_issues, path_prs, 
   return terminated_sucessfully;
 }
 
+async function get_commits_REST(repo_owner, repo_name, path_commits, log_path, tokens) {
+  console.log("COMMITS REST");
+  if(ISSUE_NO_PER_FETCH > 100) {
+    throw  new Error("Issue no per fetch cannot be bigger than 100");
+  }
+
+  var no_of_commits_fetched_so_far = fs.readFileSync(path_commits, 'utf-8').split(/\r?\n/).length;
+  var page_no = Math.floor(( no_of_commits_fetched_so_far )/ ISSUE_NO_PER_FETCH + 1);
+  var token_no = 0;
+
+  var terminated_sucessfully = false;
+
+  while (1) {
+    try {
+        // Get ISSUE_NO_PER_FETCH commits at a time
+        const config = {
+            headers: { Authorization: `Bearer ${tokens[token_no]}` },
+        };
+        var {data} = await axios.get(
+          `https://api.github.com/repos/${repo_owner}/${repo_name}/commits?per_page=${ISSUE_NO_PER_FETCH}&page=${page_no}`,
+          config
+        );
+
+        // These are the strings that will eventually be written to data/../commits_REST.json
+        var str_commits = "";
 
 
 
+        if( data.length> 0) {
+            // For each commit, get the necessary information and append it to str_issues or str_prs
+
+         
+            for (var commit of data) {
+                var commit_trimmed = {}
+
+                var githubUsername = ""
+                
+                console.log("Hİ " + commit["sha"]);
+                try {
+                  const author = commit["author"]
+                  const committer = commit["committer"]
+                  if(author != null && author != undefined) {
+                    console.log("here");
+                    githubUsername = author["login"]
+                  } else  if(committer != null && committer != undefined) {
+                    console.log("here2");
+                    githubUsername = committer["login"]
+                  } else {
+                    console.log("olmadı");
+
+                  }
+                  
+                } catch (error) {
+                  console.log(error.message);
+                }
+
+                commit_trimmed[commit["sha"]] = githubUsername
+                str_commits += JSON.stringify(commit_trimmed);
+                //str_commits += JSON.stringify(commit);
+                str_commits += "\n";
+            }
+
+            if( str_commits != "") {
+                fs.appendFileSync(path_commits, str_commits);
+                console.log(`\n${(page_no -1) * ISSUE_NO_PER_FETCH + data.length }th commit written`);
+            }
+
+            page_no++;
+        } else {
+            // if the data is empty, then we have fetched everything
+            console.log(
+              `COMMIT REST:Fethced all committs of ${repo_owner}/${repo_name} from REST API and extracted them to ${path_commits}`
+            );
+            fs.appendFileSync(log_path, 
+              `COMMIT REST:Fethced all committs of ${repo_owner}/${repo_name} from REST API and extracted them to ${path_commits}\n`  
+            );
+            terminated_sucessfully = true
+            break;
+        }
+   
+    } catch (e) {
+        // the token might have been expired
+        if(e.response.status == 403 ) {
+            fs.appendFileSync(log_path, `\nCOMMIT REST: TOKEN ${ALL_TOKENS[token_no]} WAS OVER! We changed the token and moved on!\n`);
+            console.log(`COMMIT REST:: TOKEN ${ALL_TOKENS[token_no]} WAS OVER! We changed the token and moved on!\n`);
+            token_no += 1;
+            token_no = token_no % tokens.length
+  
+            // if we have tried every token, let's wait for 15 minutes before trying again
+            if(token_no == 0) {
+              fs.appendFileSync(log_path, `\nCOMMIT REST:: ALL TOKENS WERE OVER! Sleeping for 15 minutes. Sleeping time ${new Date()} \n`);
+              console.log( `COMMIT REST: ALL TOKENS WERE OVER! Sleeping for 15 minutes. Sleeping time ${new Date()} \n`);
+              await sleep(60000*15); 
+              fs.appendFileSync(log_path, `\nCOMMIT REST: Waking up. time:  ${new Date()} \n`);
+              console.log(`COMMIT REST: Waking up. time:  ${new Date()} \n`);
+            }
+        } else {
+            // might be a server error or something else might have gone wrong
+            fs.appendFileSync(log_path, `\nCOMMIT REST: Something went wrong! ${e.message} \n`);
+            console.log( `COMMIT REST: Something went wrong! ${e.message} \n`);
+        }
+
+        // Whatever happens, when an error is caught, it is handled
+
+    }
+
+  }
+
+  return terminated_sucessfully;
+}
 
 
 
