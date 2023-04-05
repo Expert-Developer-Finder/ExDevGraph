@@ -2,7 +2,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import dotenv from "dotenv";
-import { graphRouter } from "./routes/index.js";
+import { graphRouter, queryRouter } from "./routes/index.js";
 
 dotenv.config();
 
@@ -21,6 +21,7 @@ app.get("/", (req, res)=> {
 
 
 app.use("/graph", graphRouter);
+app.use("/query", queryRouter);
 
 
 try {
