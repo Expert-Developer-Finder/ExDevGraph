@@ -36,6 +36,22 @@ export const getRecommendations = async (req, res) => {
             });
 
         } else { // source is folder
+            const res = await session.readTransaction(txc =>
+                txc.run(
+                `
+                    MATCH(f:Folder{path: $path}) WITH f 
+                    MATCH(f) <-[i:INSIDE_FOFI]-(fi:File)<-[mf:ADDED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author)  
+                    return count(cb) as commit_count, a.authorName as commited_by 
+                    ORDER BY count(cb) DESC limit 3
+                `,
+                { path }
+                )
+            );
+
+            res.records.forEach((r)=> {
+                const name = r._fields[1];
+                experts.push(name);
+            });
 
         }
 

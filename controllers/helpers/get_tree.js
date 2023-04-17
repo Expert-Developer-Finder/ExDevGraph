@@ -11,8 +11,7 @@ async function get_tree(repo_owner, repo_name, branch, path_tree, log_path, toke
         var {data} = await axios.get(
             `https://api.github.com/repos/${repo_owner}/${repo_name}/git/trees/${branch}?recursive=1`
         );
-
-
+        
         fs.writeFileSync(path_tree, JSON.stringify(data));
 
         console.log(
