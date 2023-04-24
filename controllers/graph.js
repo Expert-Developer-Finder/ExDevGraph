@@ -10,7 +10,7 @@ import { get_pr_patchs } from "./helpers/get_pr_patchs.js";
 import dotenv from "dotenv";
 import { get_rest_commits } from './helpers/get_rest_commits.js';
 import { log } from 'console';
-import { graph_pulls_create } from ".patch.js"
+import { graph_pulls_create, fetchPatchData } from "./patch.js"
 dotenv.config();
 
 // This method will be called by the api and immediatelly return a response. 
@@ -37,7 +37,7 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
     const patches = `./data/${repo_owner}/${repo_name}/patches.json`;
     const log = `./data/${repo_owner}/${repo_name}/log.txt`;
 
-    await check_and_create_file(commits);
+    //await check_and_create_file(commits);
     await check_and_create_file(rest_commits);
     await check_and_create_file(issues);
     await check_and_create_file(pulls);
@@ -46,19 +46,20 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
     await check_and_create_file(log);
 
     // // Similateniously collect every required data
-    const commits_fetched = get_commits(repo_owner, repo_name, commits, log, tokens);
+    //const commits_fetched = get_commits(repo_owner, repo_name, commits, log, tokens);
     const rest_commits_fetched = get_rest_commits(repo_owner, repo_name, rest_commits, log, tokens);
     const issues_and_prs_fetched = get_issues_and_prs(repo_owner, repo_name, issues, pulls, log, tokens);
     const tree_fetched = get_tree(repo_owner, repo_name, branch, tree, log, tokens);
 
     // Wait for data fetching to end
-    await commits_fetched;
+    //await commits_fetched;
     await rest_commits_fetched;
     await issues_and_prs_fetched;
     await tree_fetched;
     // Only after issues_and_prs_fetched done, fetch the PR patches
-    await get_pr_patchs(repo_owner, repo_name, patches, pulls, log, tokens);
-
+    //await get_pr_patchs(repo_owner, repo_name, patches, pulls, log, tokens);
+    await fetchPatchData(pulls, patches, tokens, repo_owner, repo_name)
+    
     console.log("Data has been fetched");
 
     /** THE DATA HAS BEEN FETCHED **/
@@ -85,9 +86,9 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
 // GRAPH CREATOR
 async function upload_graph(path_commits, path_tree, path_rest_commits, patches_path) {
   // Create a Driver Instance
-  const uri = process.env.NEO_URI;
-  const user = process.env.NEO_USER;
-  const password = process.env.NEW_PWD;
+  const uri = process.env.NEO4J_URI;
+  const user = process.env.NEO4J_USERNAME;
+  const password = process.env.NEO4J_PASSWORD;
 
   console.log("Uploading graph");
 
@@ -383,7 +384,7 @@ async function upload_graph(path_commits, path_tree, path_rest_commits, patches_
     console.log("ADDED_FILE relation uploaded");
 
     //Be careful! This is an async function and has to be run after authors and commits are created!
-    graph_pulls_create(patches_path, session)
+    await graph_pulls_create(patches_path, session)
 
     console.log("Pull Request data uploaded.")
 

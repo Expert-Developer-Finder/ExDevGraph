@@ -136,56 +136,58 @@ function splitIntoParts(lines, separator) {
     return parts;
 }
 
-export async function fetchPatchData(pulls_path, patch_path, tokens) {
+
+export async function fetchPatchData(pulls_path, patch_path, tokens, repo_owner, repo_name) {
 
     console.log("Patch collection started")
-    //This is definely not the best way to read this file.
-    //But the file is not a valid json.
-    //Need for a valid json file
     //TODO: Make the graph.js output a valid json.
     var f = fs.readFileSync(pulls_path, 'utf-8')
-    f = JSON.parse(f.toString())
+    const pullsLinesSplitted = f.split(/\r?\n/);
+
     //Do not take non merged prs
-    f = f.filter(pr => pr.pull_request.merged_at != null)
 
     var fetched_patches = "["
 
     var i = 0
-    for (const pr of f) {
+    for (var line of pullsLinesSplitted) {
+        if (line.length) {
+            i++
+            var pr = JSON.parse(line);
+            if (pr.pull_request.merged_at === null) {continue;}
+            
+            console.log(pr.pull_request.patch_url)
+            const config = {
+                headers: { Authorization: `Bearer ${tokens[0]}` }, //TODO: Prepare Muliple token 
+            };
+            console.log()
+            var { data } = await axios.get(
+                "https://patch-diff.githubusercontent.com/raw/" + repo_owner + "/" + repo_name + "/pull/" + pr.number + ".patch",
+                config
+            );
+            //console.log(data)
+            //Somehow divide mulitple commit patch data
+            var fArr = data.split(/(From \w{40} )/g)
+            var concatFArr = []
+            for (let i = 0; i < (fArr.length - 1) / 2; i++) {
+                const element = fArr[i * 2 + 1] + fArr[i * 2 + 2];
+                concatFArr[i] = element
+            }
+            concatFArr.forEach((element, index) => {
+                console.log(pr.number + "//" + index)
+                concatFArr[index] = parseGitPatch(element)
+            });
+            //console.log(concatFArr)
+            pr["patch"] = concatFArr
 
-        //console.log(pr.pull_request.patch_url)
-        const config = {
-            headers: { Authorization: `Bearer ${tokens[0]}` }, //TODO: Prepare Muliple token 
-        };
-        console.log()
-        var { data } = await axios.get(
-            "https://patch-diff.githubusercontent.com/raw/chaoss/grimoirelab-perceval/pull/" + pr.number + ".patch",
-            config
-        );
-        //console.log(data)
-        //Somehow divide mulitple commit patch data
-        var fArr = data.split(/(From \w{40} )/g)
-        var concatFArr = []
-        for (let i = 0; i < (fArr.length - 1) / 2; i++) {
-            const element = fArr[i * 2 + 1] + fArr[i * 2 + 2];
-            concatFArr[i] = element
-        }
-        concatFArr.forEach((element, index) => {
-            console.log(pr.number + "//" + index)
-            concatFArr[index] = parseGitPatch(element)
-        });
-        //console.log(concatFArr)
-        pr["patch"] = concatFArr
-        i++
-        if (i === f.length) {
-            console.log("last")
-            fetched_patches = fetched_patches + JSON.stringify(pr)
-        }
-        else {
-            fetched_patches = fetched_patches + JSON.stringify(pr) + ",\n"
+            if (i === pullsLinesSplitted.length-1) {
+                console.log("last")
+                fetched_patches = fetched_patches + JSON.stringify(pr)
+            }
+            else {
+                fetched_patches = fetched_patches + JSON.stringify(pr) + ",\n"
+            }
         }
     }
-
     var fetched_patches = fetched_patches + "]"
     fs.appendFileSync(patch_path, fetched_patches)
 }
@@ -196,11 +198,14 @@ export async function graph_pulls_create(path_patches, session) {
     const maxCount = pullsLines.length
     var currentCount = 0
     for (var pr of pullsLines) {
-        currentCount++
-        console.log(`Uploading PR Data $currentCount / $maxCount`, { currentCount, maxCount })
+
         var prDate = pr.closed_at
         var prTitle = pr.title
         var prNumber = pr.number
+
+        currentCount++
+        console.log(`Uploading PR Data ${currentCount} / ${maxCount}`, { prNumber, prTitle })
+
 
         try {
             //Create Pull node
