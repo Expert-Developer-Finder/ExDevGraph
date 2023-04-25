@@ -6,14 +6,16 @@ export const getRecommendations = async (req, res) => {
         path = path.substring(1);
     }
 
-    try {
+    console.log(path);
 
+    try {
         // connect to neo4j
         const uri= process.env.NEO_URI;
         const user= process.env.NEO_USER;
         const password = process.env.NEW_PWD;
         const driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
         const session = driver.session();
+
 
         // TODO : const maxExpertNo = parseInt("3");
         let experts =[];

@@ -61,6 +61,7 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch ) => {
 
         console.log("Data has been fetched");
 
+
         /** THE DATA HAS BEEN FETCHED **/
         await upload_graph(commits, tree, rest_commits);
 

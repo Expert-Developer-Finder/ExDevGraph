@@ -44,7 +44,7 @@ neobolt==1.7.17
 neomodel==4.0.10
 packaging==23.0
 pansi==2020.7.3
-perceval @ file:///Users/egeergull/Desktop/grimoirelab-perceval
+perceval 
 pexpect==4.8.0
 pkginfo==1.9.6
 platformdirs==2.6.2

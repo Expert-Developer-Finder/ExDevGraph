@@ -1,0 +1,73 @@
+{
+  "sha": "3dfbaac8d90db42cdecfaba7404c2726b3c80f2b",
+  "node_id": "C_kwDOJOJQ0NoAKDNkZmJhYWM4ZDkwZGI0MmNkZWNmYWJhNzQwNGMyNzI2YjNjODBmMmI",
+  "commit": {
+    "author": {
+      "name": "Ceyda Sahin",
+      "email": "ceydasahin889@gmail.com",
+      "date": "2023-03-25T12:27:47Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2023-03-25T12:27:47Z"
+    },
+    "message": "Initial commit",
+    "tree": {
+      "sha": "df68dc6cd138269e000a46472ad7bae68536d8d7",
+      "url": "https://api.github.com/repos/ceydas/exdev_test/git/trees/df68dc6cd138269e000a46472ad7bae68536d8d7"
+    },
+    "url": "https://api.github.com/repos/ceydas/exdev_test/git/commits/3dfbaac8d90db42cdecfaba7404c2726b3c80f2b",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsBcBAABCAAQBQJkHujDCRBK7hj4Ov3rIwAAR5sIADMs3HAiPCUb8fk+vL9MkJ7g\n6jz4OG3ijHJlyEsXR7CyrMvB+/+zCDdPiCiGJIfeN5wTpgOU5KB/Kqff+RuNoefh\nH/PSUCTuBGtaRoIPTgKMsOkFX8OvnJ7A2y6DysUTCbrmjJHTLDkCSTUWijFMmdTo\nkq3vuA1Vh8QV0ZpbUkV1K2sWLJxwGjciTDv2pNXJiI9uMKaqpEGA/DVyRUqV1BnI\nZSQA9PgPRoQDaNAm1Py/C05V98jXG4aUSu2wGKxOvfz2FNaRzsZ0tqUBxpcTyMq8\n9lAqUSlYNHzSb5azHaSXW0Ebe6OWfegUdXOWo+a+D1uXtRdT4bllogn8k7YdSsc=\n=pNGT\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree df68dc6cd138269e000a46472ad7bae68536d8d7\nauthor Ceyda Sahin <ceydasahin889@gmail.com> 1679747267 +0300\ncommitter GitHub <noreply@github.com> 1679747267 +0300\n\nInitial commit"
+    }
+  },
+  "url": "https://api.github.com/repos/ceydas/exdev_test/commits/3dfbaac8d90db42cdecfaba7404c2726b3c80f2b",
+  "html_url": "https://github.com/ceydas/exdev_test/commit/3dfbaac8d90db42cdecfaba7404c2726b3c80f2b",
+  "comments_url": "https://api.github.com/repos/ceydas/exdev_test/commits/3dfbaac8d90db42cdecfaba7404c2726b3c80f2b/comments",
+  "author": {
+    "login": "ceydas",
+    "id": 26047050,
+    "node_id": "MDQ6VXNlcjI2MDQ3MDUw",
+    "avatar_url": "https://avatars.githubusercontent.com/u/26047050?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/ceydas",
+    "html_url": "https://github.com/ceydas",
+    "followers_url": "https://api.github.com/users/ceydas/followers",
+    "following_url": "https://api.github.com/users/ceydas/following{/other_user}",
+    "gists_url": "https://api.github.com/users/ceydas/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/ceydas/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/ceydas/subscriptions",
+    "organizations_url": "https://api.github.com/users/ceydas/orgs",
+    "repos_url": "https://api.github.com/users/ceydas/repos",
+    "events_url": "https://api.github.com/users/ceydas/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/ceydas/received_events",
+    "type": "User",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "web-flow",
+    "id": 19864447,
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/web-flow",
+    "html_url": "https://github.com/web-flow",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "type": "User",
+    "site_admin": false
+  },
+  "parents": []
+}
