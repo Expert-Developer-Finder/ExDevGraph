@@ -1,3 +1,98 @@
+//pr komboları file autohr 
+match(a:Author)<-[spb:SUBMITED_PR_BY]-(p:Pull)<-[cip:CONTAINED_IN_PR]-(c:Commit)-[af:ADDED_FILE]->(f:File) return a.authorLogin as AuthorLogin ,p.prNumber as PrNumber,count(cip) as PRknowAboutScore,f.path as FilePath
+
+//PR SCORE
+match(a:Author)<-[spb:SUBMITED_PR_BY]-(p:Pull)<-[cip:CONTAINED_IN_PR]-(c:Commit)-[af:ADDED_FILE]->(f:File{path:"accounting/yapikredi/2023/yk_totals.py"}) return a.authorLogin as AuthorLogin ,p.prNumber as PrNumber,count(cip) as PRknowAboutScore,f.path as FilePath
+
+
+//PR NUMBER PR KNOWABOUT SCORE AND FILEPATH
+match(p:Pull)<-[cip:CONTAINED_IN_PR]-(c:Commit)-[af:ADDED_FILE]->(f:File) return p.prNumber as PrNumber,count(cip) as knowAboutScore,f.path as FilePath
+
+
+
+match(a:Author)<-[spb:SUBMITED_PR_BY]-(p:Pull)<-[cip:CONTAINED_IN_PR]-(c:Commit)-[af:ADDED_FILE]->(f:File) return a,spb,p,cip,c,af,f
+//commit sayılarıyal fileları ver
+Match(n:File)<-[:ADDED_FILE]-(c:Commit) return count(c) as CommitCount, n.path as FilePath
+
+
+
+//FILE IÇIN COMMIT VE RECENCY SCORE'LARINI HARMANLAYIP TOP 5 EXPERTI RETURNLEYEN QUERY
+2023 as currentYear,
+4 as currentMonth,
+"accounting/yapikredi/2023/yk_totals.py" as filePath
+MATCH(f:File{path:filePath})<-[mf:ADDED_FILE]-(n:Commit)-[cb:COMMITED_BY]->(a:Author)
+RETURN  a.authorLogin as AuthorName,count(cb) as CommitCount,
+SUM(CASE 
+  WHEN n.year = currentYear AND currentMonth-n.month=0  THEN 2
+  WHEN n.year = currentYear AND currentMonth-n.month=1 THEN 1.75
+  WHEN n.year = currentYear AND currentMonth-n.month=2 THEN 1.5
+    WHEN n.year = currentYear AND currentMonth-n.month=3 THEN 1.25
+  ELSE 1
+END) AS TotalScore ORDER BY TotalScore DESC LIMIT 5
+
+//TOTAL COMMITLERINE VE RECENCYLERINE GÖRE CURRENT EN FAZLA BILENDEN EN AZA EXPERTLERIN SIRALANMASI TOTAL PUANLARIYLA BERABER
+WITH 
+2020 as currentYear,
+7 as currentMonth
+MATCH (n:Commit)-[cb:COMMITED_BY]->(a:Author)
+RETURN  a.authorName as AuthorName,count(cb) as CommitCount,
+SUM(CASE 
+  WHEN n.year = currentYear AND currentMonth-n.month=0  THEN 2
+  WHEN n.year = currentYear AND currentMonth-n.month=1 THEN 1.75
+  WHEN n.year = currentYear AND currentMonth-n.month=2 THEN 1.5
+    WHEN n.year = currentYear AND currentMonth-n.month=3 THEN 1.25
+  ELSE 1
+END) AS TotalScore ORDER BY TotalScore DESC
+
+
+
+//COMMIT TARIHINE GORE RECENCY SCORE HESAPLIYOR (DAHA IYI PRACTICE)
+2020 as currentYear,
+7 as currentMonth
+MATCH (n:Commit)
+RETURN n.year as CommitYear, n.month as CommitMonth, 
+CASE 
+  WHEN n.year = currentYear AND currentMonth-n.month=0  THEN 2
+  WHEN n.year = currentYear AND currentMonth-n.month=1 THEN 1.75
+  WHEN n.year = currentYear AND currentMonth-n.month=2 THEN 1.5
+    WHEN n.year = currentYear AND currentMonth-n.month=3 THEN 1.25
+  ELSE 1
+END AS RecencyScore ORDER BY RecencyScore DESC
+
+
+
+//COMMIT TARIHINE GORE RECENCY SCORE HESAPLIYOR
+MATCH (n:Commit)
+RETURN n.year as CommitYear, n.month as CommitMonth, 
+CASE 
+  WHEN n.year = 2020 AND 7-n.month=0  THEN 2
+  WHEN n.year = 2020 AND 7-n.month=1 THEN 1.75
+  WHEN n.year = 2020 AND 7-n.month=2 THEN 1.5
+    WHEN n.year = 2020 AND 7-n.month=3 THEN 1.25
+  ELSE 1
+END AS RecencyScore ORDER BY RecencyScore DESC
+
+
+
+
+
+
+
+//ceydog
+MATCH (a:Author)-[:COMMITTED_BY]->(c:Commit)-[:FILE_TO_COMMIT]->(f:File {filePath: $filePath})
+OPTIONAL MATCH (c)-[:PR_TO_COMMIT]->(pr:PullRequest)
+WITH a, c, f, SUM(f.pathLength) AS PATHLEN_KA, COUNT(pr) AS PR_COUNT
+WITH a.authorEmail AS authorEmail, PATHLEN_KA, PR_COUNT, $w_pathlen AS w_pathlen, $w_pr AS w_pr
+RETURN authorEmail, (PATHLEN_KA * w_pathlen + PR_COUNT * w_pr) AS totalKnowAboutScore
+
+//total commit count in folder(also includes folder-folder relations)
+MATCH(f:Folder{path:"perceval/backends/core"}) WITH f MATCH(f) <-[i:INSIDE]-(fi:File)<-[mf:MODIFIED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author)  return count(c) as total_file_commit_count
+//her şey
+MATCH(parent_fo:Folder) <-[rff:INSIDE_FOFO]-(f:Folder) <-[i:INSIDE_FIFI]-(fi:File)<-[mf:MODIFIED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author) return parent_fo,f,i,fi,mf,c,cb,a 
+
+//her şey folder folder dahil
+MATCH(parent_fo:Folder) <-[rff:INSIDE_FOFO]-(f:Folder) <-[i:INSIDE_FIFI]-(fi:File)<-[mf:MODIFIED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author) return parent_fo,f,i,fi,mf,c,cb,a
+
 //tüm file için graph visualization file,commit ve author 
 MATCH (f:File{path:"perceval/backends/core/jenkins.py"}) WITH f MATCH(f)<-[mf:MODIFIED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author)  return f,c,a,cb,mf
 

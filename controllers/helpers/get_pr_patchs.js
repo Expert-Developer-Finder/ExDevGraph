@@ -29,6 +29,7 @@ async function get_pr_patchs(repo_owner, repo_name, path, path_prs, log_path, to
             config
          );
        
+        //////////////////////////////////////////////////////////////
         var patch_info = {};
         patch_info["number"] = prNo;
         patch_info["patch"] = data.toString();
@@ -39,6 +40,7 @@ async function get_pr_patchs(repo_owner, repo_name, path, path_prs, log_path, to
   
         fs.appendFileSync( path, str_patches);
   
+        /////////////////////////////////////////////////////////////////
         can_go = true;
         if(i%10==0) {
           console.log( "PR_PATCHES: " +i +"th pr has been looked up");
