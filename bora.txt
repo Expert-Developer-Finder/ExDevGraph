@@ -17,6 +17,7 @@ Match(n:File)<-[:ADDED_FILE]-(c:Commit) return count(c) as CommitCount, n.path a
 
 
 //FILE IÇIN COMMIT VE RECENCY SCORE'LARINI HARMANLAYIP TOP 5 EXPERTI RETURNLEYEN QUERY
+WITH 
 2023 as currentYear,
 4 as currentMonth,
 "accounting/yapikredi/2023/yk_totals.py" as filePath

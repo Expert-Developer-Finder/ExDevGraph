@@ -1,7 +1,8 @@
 import shutil
 import json
 import sys
-from perceval.backends.core.git import Git
+from grimoirelab.perceval.backends.core.git import Git
+# from perceval.backends.core.git import Git
 
 repoOwner = sys.argv[1]
 repoName = sys.argv[2]

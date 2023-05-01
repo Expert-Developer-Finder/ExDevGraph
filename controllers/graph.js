@@ -89,6 +89,7 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
     await fetchPatchData(pulls, patches, tokens, repo_owner, repo_name);
 
     console.log("Data has been fetched");
+    return;
 
     /** THE DATA HAS BEEN FETCHED **/
     await upload_graph(commits, tree, rest_commits, patches);
