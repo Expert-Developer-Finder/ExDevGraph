@@ -11,6 +11,7 @@ import dotenv from "dotenv";
 import { get_rest_commits } from "./helpers/get_rest_commits.js";
 import { log } from "console";
 import { graph_pulls_create, fetchPatchData } from "./patch.js";
+import { fetchReviewData_invaldJson, graph_review_create } from "../controllers/reviews.js";
 dotenv.config();
 
 // This method will be called by the api and immediatelly return a response.
@@ -43,15 +44,17 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
     const tree = `./data/${repo_owner}/${repo_name}/tree.json`;
     const patches = `./data/${repo_owner}/${repo_name}/patches.json`;
     const log = `./data/${repo_owner}/${repo_name}/log.txt`;
+    const reviews = `./data/${repo_owner}/${repo_name}/reviews.json`;
 
     //await check_and_create_file(commits);
-    await check_and_create_file(commits);
+    //await check_and_create_file(commits);
     await check_and_create_file(rest_commits);
     await check_and_create_file(issues);
     await check_and_create_file(pulls);
     await check_and_create_file(tree);
     await check_and_create_file(patches);
     await check_and_create_file(log);
+    await check_and_create_file(reviews);
 
     // // Similateniously collect every required data
     const commits_fetched = get_commits(repo_owner, repo_name, commits, log, tokens);
@@ -87,12 +90,12 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
     // Only after issues_and_prs_fetched done, fetch the PR patches
     //await get_pr_patchs(repo_owner, repo_name, patches, pulls, log, tokens);
     await fetchPatchData(pulls, patches, tokens, repo_owner, repo_name);
-
+    await fetchReviewData_invaldJson(pulls, reviews, tokens, repo_owner, repo_name);
     console.log("Data has been fetched");
     return;
 
     /** THE DATA HAS BEEN FETCHED **/
-    await upload_graph(commits, tree, rest_commits, patches);
+    await upload_graph(commits, tree, rest_commits, patches, reviews);
 
     // Update the creating status of the repository
     fetch(
@@ -116,7 +119,8 @@ async function upload_graph(
   path_commits,
   path_tree,
   path_rest_commits,
-  patches_path
+  patches_path,
+  reviews_path
 ) {
   // Create a Driver Instance
   const uri = process.env.NEO4J_URI;
@@ -476,8 +480,11 @@ async function upload_graph(
 
     //Be careful! This is an async function and has to be run after authors and commits are created!
     await graph_pulls_create(patches_path, session);
-
     console.log("Pull Request data uploaded.");
+    await graph_review_create(reviews_path, session);
+    console.log("Review data uploaded.");
+
+
 
     console.log("GRAPH CREATED!");
     await session.close();
