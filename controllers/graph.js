@@ -1,17 +1,27 @@
 import fs from "fs";
 import fss from "fs/promises";
-import axios from "axios";
-import neo4j, { Node, Relationship, Integer, auth } from "neo4j-driver";
-import { check_and_create_file, sleep } from "./helpers/helpers.js";
-import { get_commits } from "./helpers/get_commits.js";
-import { get_tree } from "./helpers/get_tree.js";
-import { get_issues_and_prs } from "./helpers/get_issues_and_prs.js";
-import { get_pr_patchs } from "./helpers/get_pr_patchs.js";
+import neo4j from "neo4j-driver";
 import dotenv from "dotenv";
-import { get_rest_commits } from "./helpers/get_rest_commits.js";
-import { log } from "console";
 import { graph_pulls_create, fetchPatchData } from "./patch.js";
 import { fetchReviewData_invaldJson, graph_review_create } from "../controllers/reviews.js";
+
+import {
+  upload_authors,
+  upload_commits,
+  upload_COMMITTED_BY_relation,
+  upload_files,
+  upload_folders,
+  upload_FOFI_relation,
+  upload_FOFO_relation,
+  upoad_ADDED_FILE_relation,
+  get_commits,
+  get_issues_and_prs,
+  get_pr_patchs,
+  get_rest_commits,
+  get_tree,
+}from "./helpers/index.js";
+import { check_and_create_file } from "./helpers/helpers.js";
+
 dotenv.config();
 
 // This method will be called by the api and immediately return a response.
@@ -46,8 +56,7 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
     const log = `./data/${repo_owner}/${repo_name}/log.txt`;
     const reviews = `./data/${repo_owner}/${repo_name}/reviews.json`;
 
-    //await check_and_create_file(commits);
-    //await check_and_create_file(commits);
+    await check_and_create_file(commits);
     await check_and_create_file(rest_commits);
     await check_and_create_file(issues);
     await check_and_create_file(pulls);
@@ -55,47 +64,17 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
     await check_and_create_file(patches);
     await check_and_create_file(log);
     await check_and_create_file(reviews);
+    console.log("Necessary files are created if they aready don't exist");
 
-    // // Similateniously collect every required data
-    const commits_fetched = get_commits(repo_owner, repo_name, commits, log, tokens);
-    const rest_commits_fetched = get_rest_commits(
-      repo_owner,
-      repo_name,
-      rest_commits,
-      log,
-      tokens
-    );
-    const issues_and_prs_fetched = get_issues_and_prs(
-      repo_owner,
-      repo_name,
-      issues,
-      pulls,
-      log,
-      tokens
-    );
-    const tree_fetched = get_tree(
-      repo_owner,
-      repo_name,
-      branch,
-      tree,
-      log,
-      tokens
-    );
 
-    // Wait for data fetching to end
-    await commits_fetched;
-    await rest_commits_fetched;
-    await issues_and_prs_fetched;
-    await tree_fetched;
-    // Only after issues_and_prs_fetched done, fetch the PR patches
-    //await get_pr_patchs(repo_owner, repo_name, patches, pulls, log, tokens);
-    await fetchPatchData(pulls, patches, tokens, repo_owner, repo_name);
-    await fetchReviewData_invaldJson(pulls, reviews, tokens, repo_owner, repo_name);
-    console.log("Data has been fetched");
-
-    /** THE DATA HAS BEEN FETCHED **/
+    // Fetch the data
+    /** If the data already has been fetched, comment for the development */
+    // await fetch_data(repo_owner, repo_name, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
+    
+    // Upload the data to Neo4j
     await upload_graph(commits, tree, rest_commits, patches, reviews);
 
+    
     // Update the creating status of the repository
     fetch(
       `${process.env.SERVER_BASE_URL}/repos/${repo_owner}/${repo_name}/update-status`,
@@ -108,10 +87,35 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
       }
     );
   } catch (error) {
-    // Something has gone wrong during the data retrieval!
+    console.log('====================================');
+    console.log("ERROR: " + error);
+    console.log('====================================');
     // TODO: mail to us
   }
 };
+
+async function  fetch_data(repo_owner, repo_name, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch) {
+  console.log("Fetching Data");
+
+  // Similateniously collect every required data
+  const rest_commits_fetched = get_rest_commits( repo_owner, repo_name, rest_commits, log, tokens);
+  const commits_fetched = get_commits(repo_owner, repo_name, commits, log, tokens);
+  const issues_and_prs_fetched = get_issues_and_prs( repo_owner, repo_name, issues, pulls, log, tokens);
+  const tree_fetched = get_tree( repo_owner, repo_name, branch, tree, log, tokens);
+
+  // Wait for data fetching to end
+  await commits_fetched;
+  await rest_commits_fetched;
+  await issues_and_prs_fetched;
+  await tree_fetched;
+
+  // Only after issues_and_prs_fetched done, fetch the PR patches
+  //await get_pr_patchs(repo_owner, repo_name, patches, pulls, log, tokens);
+  await fetchPatchData(pulls, patches, tokens, repo_owner, repo_name);
+  await fetchReviewData_invaldJson(pulls, reviews, tokens, repo_owner, repo_name);
+  console.log("Data has been fetched");
+}
+
 
 // GRAPH CREATOR
 async function upload_graph(
@@ -191,8 +195,6 @@ async function upload_graph(
       }
     });
 
-    console.log("commitsAndGithubUsernames: ");
-    console.log(commitsAndGithubUsernames);
 
     // read commits and add them to the commits set
     // also add the commit author relation to that set as well
@@ -231,7 +233,6 @@ async function upload_graph(
         ];
         var monthNumber = monthArray.indexOf(month);
         monthNumber = monthNumber + 1;
-        console.log(year + "/" + monthNumber);
 
         commits.add([sha, year, monthNumber]);
 
@@ -252,8 +253,6 @@ async function upload_graph(
       }
     });
 
-    console.log("COMMIT AUTHOR");
-    console.log(COMMIT_AUTHOR);
 
     console.log("No of authors: " + authors.size);
     console.log("No of commits: " + commits.size);
@@ -263,226 +262,21 @@ async function upload_graph(
     console.log("No of COMMIT_FILE: " + FOLDER_FILE.size);
     console.log("No of FOLDER_FOLDER: " + FOLDER_FOLDER.size);
 
-    var loading = 0;
-    for (const author of authors) {
-      var authorLogin = author;
-      const res = await session.executeWrite((tx) =>
-        tx.run(
-          `CREATE (u:Author {authorLogin: $authorLogin})
-           RETURN u
-          `,
-          { authorLogin }
-        )
-      );
-      loading++;
-      if (loading % Math.ceil(authors.size / 10) == 0) {
-        console.log(
-          "Authors uploading: " +
-            Math.ceil((loading / (authors.size / 10)) * 10) +
-            "%"
-        );
-      }
-    }
-    console.log("Authors uploaded");
+    await upload_authors(authors, session);
+    await upload_commits(commits, session);
+    await upload_files(files, session);
+    await upload_folders(folders, session);
 
-    loading = 0;
-    for (const commit of commits) {
-      var hash = commit[0];
-      var year = commit[1];
-      year = parseInt(year);
-      var monthNumber = commit[2];
-
-      const res = await session.executeWrite((tx) =>
-        tx.run(
-          `
-            CREATE (c:Commit {
-              hash: $hash,
-              year: $year,
-              month: $monthNumber
-            })
-            RETURN c
-          `,
-          { hash, year, monthNumber }
-        )
-      );
-      loading++;
-      if (loading % Math.ceil(commits.size / 10) == 0) {
-        console.log(
-          "Commits uploading: " +
-            Math.ceil((loading / (commits.size / 10)) * 10) +
-            "%"
-        );
-      }
-    }
-    console.log("Commits uploaded");
-
-    loading = 0;
-    for (const file of files) {
-      const res = await session.executeWrite((tx) =>
-        tx.run(
-          `
-            CREATE (c:File {
-              path: $file
-            })
-            RETURN c
-          `,
-          { file }
-        )
-      );
-      loading++;
-      if (loading % Math.ceil(files.size / 10) == 0) {
-        console.log(
-          "Files uploading: " +
-            Math.ceil((loading / (files.size / 10)) * 10) +
-            "%"
-        );
-      }
-    }
-    console.log("Files uploaded");
-
-    loading = 0;
-    for (const folder of folders) {
-      let folderPath = folder.path;
-      const res = await session.executeWrite((tx) =>
-        tx.run(
-          `
-            CREATE (c:Folder {
-              path: $folderPath
-            })
-            RETURN c
-          `,
-          { folderPath }
-        )
-      );
-      loading++;
-      if (loading % Math.ceil(folders.size / 10) == 0) {
-        console.log(
-          "Folders uploading: " +
-            Math.ceil((loading / (folders.size / 10)) * 10) +
-            "%"
-        );
-      }
-    }
-    console.log("Folders uploaded");
-
-    loading = 0;
-    for (const relation_ff of FOLDER_FOLDER) {
-      let parentFolderData = relation_ff[0];
-      let folderData = relation_ff[1];
-      const res = await session.executeWrite((tx) =>
-        tx.run(
-          `
-            MATCH (u:Folder {path: $parentFolderData})
-            MATCH (m:Folder {path: $folderData})
-
-            MERGE (m)-[:INSIDE_FOFO]->(u)
-          `,
-          { parentFolderData, folderData }
-        )
-      );
-      loading++;
-      if (loading % Math.ceil(FOLDER_FOLDER.size / 10) == 0) {
-        console.log(
-          "FOLDER_FOLDER uploading: " +
-            Math.ceil((loading / (FOLDER_FOLDER.size / 10)) * 10) +
-            "%"
-        );
-      }
-    }
-    console.log("INSIDE_FOFO relation uploaded");
-
-    loading = 0;
-    for (const insideData of FOLDER_FILE) {
-      let folderData = insideData[0];
-      let fileData = insideData[1];
-
-      const res = await session.executeWrite((tx) =>
-        tx.run(
-          `
-            MATCH (u:Folder {path: $folderData})
-            MATCH (m:File {path: $fileData})
-
-            MERGE (m)-[:INSIDE_FOFI]->(u)
-          `,
-          { folderData, fileData }
-        )
-      );
-      loading++;
-      if (loading % Math.ceil(FOLDER_FILE.size / 10) == 0) {
-        console.log(
-          "FOLDER_FILE uploading: " +
-            Math.ceil((loading / (FOLDER_FILE.size / 10)) * 10) +
-            "%"
-        );
-      }
-    }
-    console.log("INSIDE_FOFI relation uploaded");
-
-    loading = 0;
-    for (const commitData of COMMIT_AUTHOR) {
-      let authorD = commitData[0];
-      let commitD = commitData[1];
-      let weight = 1;
-      const res = await session.executeWrite((tx) =>
-        tx.run(
-          `
-            MATCH (u:Author {authorLogin: $authorD})
-            MATCH (m:Commit {hash: $commitD})
-
-            MERGE (m)-[r:COMMITED_BY]->(u)
-            SET r.weight = $weight,
-                r.timestamp = timestamp()
-          `,
-          { authorD, commitD, weight }
-        )
-      );
-      loading++;
-      if (loading % Math.ceil(COMMIT_AUTHOR.size / 10) == 0) {
-        console.log(
-          "COMMIT_AUTHOR uploading: " +
-            Math.ceil((loading / (COMMIT_AUTHOR.size / 10)) * 10) +
-            "%"
-        );
-      }
-    }
-    console.log("COMMITED_BY relation Done");
-
-    loading = 0;
-    for (const file of COMMIT_FILE) {
-      let commitHash = file[0];
-      let path = file[1];
-      let weight = 1;
-      const res = await session.executeWrite((tx) =>
-        tx.run(
-          `
-            MATCH (c:Commit {hash: $commitHash})
-            MATCH (f:File {path: $path})
-
-            MERGE (c)-[r:ADDED_FILE]->(f)
-            SET r.weight = $weight,
-                r.timestamp = timestamp()
-          `,
-          { commitHash, path, weight }
-        )
-      );
-      loading++;
-      if (loading % Math.ceil(COMMIT_FILE.size / 10) == 0) {
-        console.log(
-          "COMMIT_FILE uploading: " +
-            Math.ceil((loading / (COMMIT_FILE.size / 10)) * 10) +
-            "%"
-        );
-      }
-    }
-
-    console.log("ADDED_FILE relation uploaded");
-
+    await upload_FOFO_relation(FOLDER_FOLDER, session);
+    await upload_FOFI_relation( FOLDER_FILE, session)
+    await upload_COMMITTED_BY_relation(COMMIT_AUTHOR, session);
+    await upoad_ADDED_FILE_relation(COMMIT_FILE, session);
+    
     //Be careful! This is an async function and has to be run after authors and commits are created!
     await graph_pulls_create(patches_path, session);
     console.log("Pull Request data uploaded.");
     await graph_review_create(reviews_path, session);
     console.log("Review data uploaded.");
-
 
 
     console.log("GRAPH CREATED!");

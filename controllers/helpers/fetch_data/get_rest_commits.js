@@ -1,11 +1,11 @@
 import fs from 'fs';
 import axios from  'axios';
-import { sleep} from "./helpers.js";
+import { sleep} from "../helpers.js";
 import { log } from 'console';
 const COMMIT_NO_PER_FETCH = 100;
 
 async function get_rest_commits(repo_owner, repo_name, path_commits, log_path, tokens) {
-    console.log("COMMITS REST");
+
     if(COMMIT_NO_PER_FETCH > 100) {
       throw  new Error("Issue no per fetch cannot be bigger than 100");
     }
