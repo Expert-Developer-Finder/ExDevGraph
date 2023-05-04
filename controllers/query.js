@@ -21,10 +21,10 @@ export const getRecommendations = async (req, response) => {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth() + 1; // add 1 to get 1-12 month range instead of 0-11
         
-        var commitAndRecency = [];
-        var prKnowabout = [];
-
+        var expertsAndScores = [];
         let experts =[];
+
+
         if (source == "file") {
 
             // Get the commits and recency
@@ -33,7 +33,7 @@ export const getRecommendations = async (req, response) => {
                 `WITH 
                 $year as currentYear,
                 $month as currentMonth,
-                "accounting/yapikredi/2023/yk_totals.py" as filePath
+                $path as filePath 
                 MATCH(f:File{path:filePath})<-[mf:ADDED_FILE]-(n:Commit)-[cb:COMMITED_BY]->(a:Author)
                 RETURN  a.authorLogin as AuthorName,count(cb) as CommitCount,
                 SUM(CASE 
@@ -49,12 +49,15 @@ export const getRecommendations = async (req, response) => {
             );
 
             res.records.forEach((r)=> {
-                commitAndRecency.push({
-                    "authornName": r._fields[0],
+                expertsAndScores.push({
+                    "authorName": r._fields[0],
                     "commitCount": r._fields[1].low,
                     "recentCommitScore": typeof( r._fields[2]) == "object"  ? r._fields[2].low: r._fields[2] ,
+                    "prKnowAboutScore": 0,
+                    "totalScore" : 0
                 })
             });
+
 
 
             // Get the prs
@@ -70,99 +73,137 @@ export const getRecommendations = async (req, response) => {
                 )
             );
 
+            var temp = [];
             res.records.forEach((r)=> {
-                prKnowabout.push({
-                    "authornName": r._fields[0],
-                    "prKnowabout": r._fields[2].low,
+                temp.push({
+                    "authorName": r._fields[0],
+                    "prNo": r._fields[1],
+                    "prKnowAboutScore": typeof( r._fields[2]) == "object"  ? r._fields[2].low: r._fields[2] 
                 })
             });
 
 
+            for (var j = 0; j< temp.length; j++) {
+                var outerItem = temp[j];
+                var added = false;
+                for ( var i = 0; i < expertsAndScores.length; i++) {
+                    var item = expertsAndScores[i]; 
+                    if (item.authorName == outerItem.authorName){
+                        item.prKnowAboutScore = item.prKnowAboutScore + outerItem.prKnowAboutScore
+                        added = true
+                    } 
+                }
+                if (added == false) {
+                    expertsAndScores.push({
+                        "authorName": outerItem.authorName,
+                        "commitCount": 0, 
+                        "recentCommitScore": 0,
+                        "prKnowAboutScore": outerItem.prKnowAboutScore,
+                        "totalScore" : 0
+
+                    })
+                }
+
+            }
+               
+
+
         } else { // source is folder
-            const res = await session.readTransaction(txc =>
+            // Get the commits and recency
+
+             var res = await session.readTransaction(txc =>
                 txc.run(
-                `
-                    MATCH(f:Folder{path: $path}) WITH f 
-                    MATCH(f) <-[i:INSIDE_FOFI]-(fi:File)<-[mf:ADDED_FILE]-(c:Commit)-[cb:COMMITED_BY]->(a:Author)  
-                    return count(cb) as commit_count, a.authorLogin as commited_by 
-                    ORDER BY count(cb) DESC limit 3
+                `WITH $path AS folderPath,
+                $year as currentYear,
+                $month as currentMonth
+                MATCH (fo:Folder {path: folderPath})<-[ifofo:INSIDE_FOFO*0..]-(foChild:Folder)<-[ifofi:INSIDE_FOFI]-(f:File)<-[af:ADDED_FILE]-(n:Commit)-[cb:COMMITED_BY]->(a:Author)
+                RETURN a.authorLogin AS AuthorName, COUNT(*) AS CommitCount, SUM(CASE 
+                  WHEN n.year = currentYear AND currentMonth-n.month=0  THEN 2
+                  WHEN n.year = currentYear AND currentMonth-n.month=1 THEN 1.75
+                  WHEN n.year = currentYear AND currentMonth-n.month=2 THEN 1.5
+                    WHEN n.year = currentYear AND currentMonth-n.month=3 THEN 1.25
+                  ELSE 1
+                END) AS TotalScore ORDER BY TotalScore DESC LIMIT 10
                 `,
-                { path }
+                { path , year, month}
                 )
             );
 
             res.records.forEach((r)=> {
-                const name = r._fields[1];
-                experts.push(name);
+                expertsAndScores.push({
+                    "authorName": r._fields[0],
+                    "commitCount": r._fields[1].low,
+                    "recentCommitScore": typeof( r._fields[2]) == "object"  ? r._fields[2].low: r._fields[2] ,
+                    "prKnowAboutScore": 0,
+                    "totalScore" : 0
+                })
             });
+
+        
+            // Get the prs
+            // res = await session.readTransaction(txc =>
+            //     txc.run(
+            //     `With
+            //     $path as filePath 
+            //     match(a:Author)<-[spb:SUBMITED_PR_BY]-(p:Pull)<-[cip:CONTAINED_IN_PR]-
+            //     (c:Commit)-[af:ADDED_FILE]->(f:File{path:filePath})
+            //     return a.authorLogin as AuthorLogin ,p.prNumber as PrNumber,count(cip) as PRknowAboutScore,f.path as FilePath
+            //     `,
+            //     { path}
+            //     )
+            // );
+
+            var temp = [];
+            // res.records.forEach((r)=> {
+            //     temp.push({
+            //         "authorName": r._fields[0],
+            //         "prNo": r._fields[1],
+            //         "prKnowAboutScore": typeof( r._fields[2]) == "object"  ? r._fields[2].low: r._fields[2] 
+            //     })
+            // });
+
+
+            for (var j = 0; j< temp.length; j++) {
+                var outerItem = temp[j];
+                var added = false;
+                for ( var i = 0; i < expertsAndScores.length; i++) {
+                    var item = expertsAndScores[i]; 
+                    if (item.authorName == outerItem.authorName){
+                        item.prKnowAboutScore = item.prKnowAboutScore + outerItem.prKnowAboutScore
+                        added = true
+                    } 
+                }
+                if (added == false) {
+                    expertsAndScores.push({
+                        "authorName": outerItem.authorName,
+                        "commitCount": 0, 
+                        "recentCommitScore": 0,
+                        "prKnowAboutScore": outerItem.prKnowAboutScore,
+                        "totalScore" : 0
+
+                    })
+                }
+
+            }
 
         }
 
-        console.log("CIKTI");
+        // Calculate the total Scores
+        for (var i = 0; i < expertsAndScores.length; i++) {
+            var item = expertsAndScores[i];
+            expertsAndScores[i].totalScore =  (0.5 * expertsAndScores[i].commitCount) + (0.5 * expertsAndScores[i].recentCommitScore) + expertsAndScores[i].prKnowAboutScore
+        }
 
-        console.log(commitAndRecency);
-        console.log(prKnowabout);
-        console.log(experts);
+        // Sort by totalScore
+        expertsAndScores.sort((a, b) => b.totalScore - a.totalScore);
+        console.log(expertsAndScores);
+
         // SORULAR, şu anda n tane öneri varsa n tane adam dönüyo mu
         // şu pr da birden fazla aynı kişiyi farklı pr ile dönüyo mu
         // commit de aynı adam max bir kere gelcek di mi
 
-        var totalScores = {}
-        const alpha = 0.5
-        for(var i  = 0; i < commitAndRecency.length; i++) {
-            var item = commitAndRecency[i];
-            totalScores[item.authornName] = alpha * item.commitCount + (1-alpha) * item.recentCommitScore;
-        }
-
-        for(var i  = 0; i < prKnowabout.length; i++) {
-            var item = prKnowabout[i];
-            totalScores[item.authornName] = totalScores[item.authornName] + item.prKnowabout;
-        }
-
-        console.log("total scores");
-        console.log(totalScores);
-
-        var tempArray = Object.entries(totalScores);
-        tempArray.sort(function(first, second) {
-            return second[1] - first[1];
-        });
-        var sortedScores = Object.fromEntries(tempArray);
-
-        // Output the sorted object
-        console.log(commitAndRecency);
-        console.log(prKnowabout);
-        console.log(sortedScores);
-
-        experts = [];
-        for (var expName in sortedScores) {
-            var commitScore = 0;
-            for(var i  = 0; i < commitAndRecency.length; i++) {
-                var item = commitAndRecency[i];
-                if(item.authornName == expName) {
-                    commitScore = alpha * item.commitCount + (1-alpha) * item.recentCommitScore;
-                }
-            }
-
-            var prScore = 0;
-            for(var i  = 0; i < prKnowabout.length; i++) {
-                var item = prKnowabout[i];
-                console.log(item);
-                if(item.authornName == expName) {
-                    prScore = item.prKnowabout
-                }
-            }
-            experts.push({
-                "name": expName,
-                "totalScore":sortedScores[expName],
-                "commitScore" : commitScore,
-                "prScore" : prScore
-            });
-        }
-
-        console.log(experts);
-
-
-        return response.status(200).json(experts);
+        console.log("SENDING");
+        return response.status(200).json(expertsAndScores);
         
     } catch (error) {
         return response.status(404).json([]);

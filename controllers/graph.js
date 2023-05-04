@@ -13,8 +13,8 @@ import { log } from "console";
 import { graph_pulls_create, fetchPatchData } from "./patch.js";
 dotenv.config();
 
-// This method will be called by the api and immediatelly return a response.
-// Then, asyncroniously, the graph will started to be created
+// This method will be called by the api and immediately return a response.
+// Then, asynchronously, the graph will started to be created
 export const startCreateGraph = async (req, res) => {
   const { repoOwner, repoName, tokens, branch } = req.body;
   createGraph(repoOwner, repoName, tokens, branch);
@@ -89,7 +89,6 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
     await fetchPatchData(pulls, patches, tokens, repo_owner, repo_name);
 
     console.log("Data has been fetched");
-    return;
 
     /** THE DATA HAS BEEN FETCHED **/
     await upload_graph(commits, tree, rest_commits, patches);
