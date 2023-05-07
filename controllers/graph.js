@@ -12,13 +12,16 @@ import {
   upload_folders,
   upload_FOFI_relation,
   upload_FOFO_relation,
-  upoad_ADDED_FILE_relation,
+  upload_ADDED_FILE_relation,
   get_commits,
   get_issues_and_prs,
   get_pr_patchs,
   get_rest_commits,
   get_tree,
-  get_methods
+  get_methods,
+  upload_methods,
+  upload_COMMIT_CREATED_METHOD_relation,
+  upload_COMMIT_MODIFIED_METHOD_relation
 }from "./helpers/index.js";
 import { check_and_create_file } from "./helpers/helpers.js";
 
@@ -98,7 +101,7 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
 };
 
 async function  fetch_data(repo_owner, repo_name, methods, commits, rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch) {
-  console.log("Fetching Data");
+  console.log("Starting to fetch data");
 
   // // Simultaneously collect every required data
   const methods_fetched = get_methods( repo_owner, repo_name, methods, log, "erhjker");
@@ -107,17 +110,20 @@ async function  fetch_data(repo_owner, repo_name, methods, commits, rest_commits
   const issues_and_prs_fetched = get_issues_and_prs( repo_owner, repo_name, issues, pulls, log, tokens);
   const tree_fetched = get_tree( repo_owner, repo_name, branch, tree, log, tokens);
 
+  await issues_and_prs_fetched;
+  // Only after issues_and_prs_fetched done, fetch the PR patches
+  // //await get_pr_patchs(repo_owner, repo_name, patches, pulls, log, tokens);
+  const patch_data_fetched =  fetchPatchData(pulls, patches, tokens, repo_owner, repo_name);
+  const review_data_fetched =  fetchReviewData_invalidJson(pulls, reviews, tokens, repo_owner, repo_name);
+
   // Wait for data fetching to end
   await rest_commits_fetched;
-  await issues_and_prs_fetched;
   await tree_fetched;
   await methods_fetched;
   await commits_fetched;
-
-  // Only after issues_and_prs_fetched done, fetch the PR patches
-  // //await get_pr_patchs(repo_owner, repo_name, patches, pulls, log, tokens);
-  await fetchPatchData(pulls, patches, tokens, repo_owner, repo_name);
-  await fetchReviewData_invalidJson(pulls, reviews, tokens, repo_owner, repo_name);
+  await patch_data_fetched;
+  await review_data_fetched;
+ 
   console.log("Data has been fetched");
 }
 
@@ -275,10 +281,7 @@ async function upload_graph(
       }
     });
 
-    //console.log(parsedMethodData.methods);
-
     parsedMethodData.forEach((method) => {
-      console.log(method);
       METHODS.add([
         method.key,
         method.filePath,
@@ -306,109 +309,16 @@ async function upload_graph(
     await upload_commits(commits, session);
     await upload_files(files, session);
     await upload_folders(folders, session);
+    await upload_methods(METHODS, commits, session);
 
     await upload_FOFO_relation(FOLDER_FOLDER, session);
     await upload_FOFI_relation( FOLDER_FILE, session)
     await upload_COMMITTED_BY_relation(COMMIT_AUTHOR, session);
-    await upoad_ADDED_FILE_relation(COMMIT_FILE, session);
+    await upload_ADDED_FILE_relation(COMMIT_FILE, session);
+    await upload_COMMIT_CREATED_METHOD_relation(COMMIT_CREATED_METHOD, COMMIT_AUTHOR, session);
+    await upload_COMMIT_MODIFIED_METHOD_relation(COMMIT_MODIFIED_METHOD,COMMIT_AUTHOR, session);
 
-    loading = 0;
-    for (const method of METHODS) {
-      var key = method[0];
-      var filePath = method[1];
-      var className = method[2];
-      var functionName = method[3];
-      var startLineFun = method[4];
-      var endLineFun = method[5];
-
-      const res = await session.executeWrite((tx) =>
-        tx.run(
-          `
-            CREATE (m:Method {
-              key: $key,
-              filePath: $filePath,
-              className: $className,
-              functionName: $functionName,
-              startLineFun: $startLineFun,
-              endLineFun: $endLineFun
-
-            })
-            RETURN m
-          `,
-          { key, filePath, className, functionName, startLineFun, endLineFun }
-        )
-      );
-      loading++;
-      if (loading % Math.ceil(commits.size / 10) == 0) {
-        console.log(
-          "Methods uploading: " +
-            Math.ceil((loading / (commits.size / 10)) * 10) +
-            "%"
-        );
-      }
-    }
-
-    console.log("METHODS are Done");
-
-    loading = 0;
-    for (const commitCreatedMethod of COMMIT_CREATED_METHOD) {
-      let shaCreatorCommitHash = commitCreatedMethod[0];
-      let key = commitCreatedMethod[1];
-
-      const res = await session.executeWrite((tx) =>
-        tx.run(
-          `
-            MATCH (m:Method {key: $key})
-            MATCH (c:Commit {hash: $shaCreatorCommitHash})
-
-            MERGE (c)-[r:COMMIT_CREATED_METHOD]->(m)
-            SET r.timestamp = timestamp()
-          `,
-          { shaCreatorCommitHash, key }
-        )
-      );
-      loading++;
-      if (loading % Math.ceil(COMMIT_AUTHOR.size / 10) == 0) {
-        console.log(
-          "COMMIT_CREATED_METHOD uploading: " +
-            Math.ceil((loading / (COMMIT_AUTHOR.size / 10)) * 10) +
-            "%"
-        );
-      }
-    }
-
-    console.log("COMMIT_CREATED_METHOD relation Done");
-    
-
-    var loading = 0;
-    for (const commitModifiedMethod of COMMIT_MODIFIED_METHOD) {
-      let shaModifierCommitHash = commitModifiedMethod[0];
-      let key = commitModifiedMethod[1];
-
-      const res = await session.executeWrite((tx) =>
-        tx.run(
-          `
-            MATCH (m:Method {key: $key})
-            MATCH (c:Commit {hash: $shaModifierCommitHash})
-
-            MERGE (c)-[r:COMMIT_MODIFIED_METHOD]->(m)
-            SET r.timestamp = timestamp()
-          `,
-          { shaModifierCommitHash, key }
-        )
-      );
-      loading++;
-      if (loading % Math.ceil(COMMIT_AUTHOR.size / 10) == 0) {
-        console.log(
-          "COMMIT_MODIFIED_METHOD uploading: " +
-            Math.ceil((loading / (COMMIT_AUTHOR.size / 10)) * 10) +
-            "%"
-        );
-      }
-    }
-
-    console.log("COMMIT_MODIFIED_METHOD relation Done");
-    
+      
     //Be careful! This is an async function and has to be run after authors and commits are created!
     await graph_pulls_create(patches_path, session);
     console.log("Pull Request data uploaded.");

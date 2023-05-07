@@ -1,4 +1,4 @@
-const upoad_ADDED_FILE_relation = async (COMMIT_FILE, session) => {
+const upload_ADDED_FILE_relation = async (COMMIT_FILE, session) => {
     var loading = 0;
     for (const file of COMMIT_FILE) {
       let commitHash = file[0];
@@ -31,4 +31,4 @@ const upoad_ADDED_FILE_relation = async (COMMIT_FILE, session) => {
 
 }
 
-export {upoad_ADDED_FILE_relation}
+export {upload_ADDED_FILE_relation}
