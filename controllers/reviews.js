@@ -94,7 +94,7 @@ export async function graph_review_create(path_reviews, session) {
 }
 
 
-export async function fetchReviewData_invaldJson(
+export async function fetchReviewData_invalidJson(
     pulls_path,
     reviews_path,
     tokens,

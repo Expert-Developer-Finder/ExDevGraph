@@ -3,7 +3,7 @@ import fss from "fs/promises";
 import neo4j from "neo4j-driver";
 import dotenv from "dotenv";
 import { graph_pulls_create, fetchPatchData } from "./patch.js";
-import { fetchReviewData_invaldJson, graph_review_create } from "../controllers/reviews.js";
+import { fetchReviewData_invalidJson, graph_review_create } from "../controllers/reviews.js";
 import {
   upload_authors,
   upload_commits,
@@ -67,27 +67,28 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
     await check_and_create_file(log);
     await check_and_create_file(reviews);
     await check_and_create_file(methods);
-    console.log("Necessary files are created if they aready don't exist");
+    console.log("Necessary files are created if they already don't exist");
 
 
     // Fetch the data
     /** If the data already has been fetched, comment for the development */
-    // await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
+    await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
+    
     // Upload the data to Neo4j
     await upload_graph(commits, tree, rest_commits, patches, reviews, methods);
 
     
     // Update the creating status of the repository
-    // fetch(
-    //   `${process.env.SERVER_BASE_URL}/repos/${repo_owner}/${repo_name}/update-status`,
-    //   {
-    //     method: "POST",
-    //     body: JSON.stringify({ newStatus: "ready" }),
-    //     headers: {
-    //       "Content-type": "application/json; charset=UTF-8",
-    //     },
-    //   }
-    // );
+    fetch(
+      `${process.env.SERVER_BASE_URL}/repos/${repo_owner}/${repo_name}/update-status`,
+      {
+        method: "POST",
+        body: JSON.stringify({ newStatus: "ready" }),
+        headers: {
+          "Content-type": "application/json; charset=UTF-8",
+        },
+      }
+    );
   } catch (error) {
     console.log('====================================');
     console.log("ERROR: " + error);
@@ -99,27 +100,25 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
 async function  fetch_data(repo_owner, repo_name, methods, commits, rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch) {
   console.log("Fetching Data");
 
+  // // Simultaneously collect every required data
   const methods_fetched = get_methods( repo_owner, repo_name, methods, log, "erhjker");
+  const commits_fetched = get_commits(repo_owner, repo_name, commits, log, tokens);
+  const rest_commits_fetched = get_rest_commits( repo_owner, repo_name, rest_commits, log, tokens);
+  const issues_and_prs_fetched = get_issues_and_prs( repo_owner, repo_name, issues, pulls, log, tokens);
+  const tree_fetched = get_tree( repo_owner, repo_name, branch, tree, log, tokens);
+
+  // Wait for data fetching to end
+  await rest_commits_fetched;
+  await issues_and_prs_fetched;
+  await tree_fetched;
   await methods_fetched;
+  await commits_fetched;
 
-
-  // Similateniously collect every required data
-  // const rest_commits_fetched = get_rest_commits( repo_owner, repo_name, rest_commits, log, tokens);
-  // const commits_fetched = get_commits(repo_owner, repo_name, commits, log, tokens);
-  // const issues_and_prs_fetched = get_issues_and_prs( repo_owner, repo_name, issues, pulls, log, tokens);
-  // const tree_fetched = get_tree( repo_owner, repo_name, branch, tree, log, tokens);
-
-  // // Wait for data fetching to end
-  // await commits_fetched;
-  // await rest_commits_fetched;
-  // await issues_and_prs_fetched;
-  // await tree_fetched;
-
-  // // Only after issues_and_prs_fetched done, fetch the PR patches
+  // Only after issues_and_prs_fetched done, fetch the PR patches
   // //await get_pr_patchs(repo_owner, repo_name, patches, pulls, log, tokens);
-  // await fetchPatchData(pulls, patches, tokens, repo_owner, repo_name);
-  // await fetchReviewData_invaldJson(pulls, reviews, tokens, repo_owner, repo_name);
-  // console.log("Data has been fetched");
+  await fetchPatchData(pulls, patches, tokens, repo_owner, repo_name);
+  await fetchReviewData_invalidJson(pulls, reviews, tokens, repo_owner, repo_name);
+  console.log("Data has been fetched");
 }
 
 

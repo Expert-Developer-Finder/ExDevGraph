@@ -16,9 +16,6 @@ github_token = "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"
 # directory for letting Perceval clone the git repo
 repo_dir = f'./tmp/{repoOwner}_{repoName}_methods2.git'
 
-
-#repo_url = 'https://github.com/ceydas/exdev_test.git'
-#repo_dir = 'C:/Users/leren/exdev-clone-repo'
 selected_branch = 'main'
 repo = Repo.clone_from(
     repo_url,
@@ -81,8 +78,6 @@ for i in branch_commits_shas:
             commits_files[i[0]].append(f.filename)
 
 contents = repo.get_contents("")
-
-
 
 method_list = list()
 method_commit_dictionary = dict()
