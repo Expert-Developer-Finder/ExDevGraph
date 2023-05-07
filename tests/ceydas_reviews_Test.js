@@ -6,8 +6,8 @@ var repo_name = "exdev_test"
 var tokens = ["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"]
 var branch = "main"
 
-var path_pulls = "data/" + repo_owner + "/" + repo_name +"/pulls.json"
-var path_reviews = "data/" + repo_owner+ "/" + repo_name + "/reviews.json"
+var path_pulls = "data/" + repo_owner + "/" + repo_name + "/pulls.json"
+var path_reviews = "data/" + repo_owner + "/" + repo_name + "/reviews.json"
 
 
-await fetchReviewData_invalidJson(path_pulls, path_reviews, tokens,repo_owner,repo_name )
+await fetchReviewData_invalidJson(path_pulls, path_reviews, tokens, repo_owner, repo_name)

@@ -11,9 +11,13 @@ console.log('====================================');
 const driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
 const session = driver.session()
 
+var repo_owner = "ceydas"
+var repo_name = "exdev_test"
+var tokens = ["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"]
+var branch = "main"
 
-var path_pulls = "data/chaoss/grimoirelab-perceval/pulls.json"
-var path_reviews = "data/chaoss/grimoirelab-perceval/reviews.json"
+var path_reviews = "data/" + repo_owner + "/" + repo_name + "/reviews.json"
+
 await graph_review_create(path_reviews, session)
 
 session.close();
