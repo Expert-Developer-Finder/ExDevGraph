@@ -5,24 +5,27 @@ from git import Repo
 import shutil
 import sys
 import json
+import os
 
 repoOwner = sys.argv[1]
 repoName = sys.argv[2]
-git_token = sys.argv[3]
+github_token = sys.argv[3]
+selected_branch = sys.argv[4]
 repo_owner_name = f"{repoOwner}/{repoName}"
 repo_url = f'http://github.com/{repoOwner}/{repoName}.git'
-github_token = "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"
+
 
 # directory for letting Perceval clone the git repo
-repo_dir = f'./tmp/{repoOwner}_{repoName}_methods2.git'
+repo_dir = f'./tmp/{repoOwner}_{repoName}_methods.git'
 
-selected_branch = 'main'
+if (os.path.exists(repo_dir)):
+    shutil.rmtree(repo_dir) #if the repository has been cloned before, delete it first
+
 repo = Repo.clone_from(
     repo_url,
     repo_dir,
     branch = selected_branch
 )
-
 
 def reach_affecting_commits(file_name, start_line, end_line):
     import re
@@ -46,7 +49,6 @@ def reach_affecting_commits(file_name, start_line, end_line):
 
 g = Github(github_token)
 repo = g.get_repo(repo_owner_name)
-
 
 branch_commits = repo.get_commits(sha=selected_branch)
 

@@ -15,7 +15,10 @@ import {upload_ADDED_FILE_relation} from "./upload_graph/upload_ADDED_FILE_relat
 import {upload_methods} from "./upload_graph/upload_methods.js";
 import {upload_COMMIT_CREATED_METHOD_relation} from "./upload_graph/upload_COMMIT_CREATED_METHOD_relation.js";
 import {upload_COMMIT_MODIFIED_METHOD_relation} from "./upload_graph/upload_COMMIT_MODIFIED_METHOD_relation.js";
-
+import { upload_pulls } from "./upload_graph/upload_pulls.js";
+import { get_patches } from "./fetch_data/get_patches.js";
+import { get_reviews } from "./fetch_data/get_reviews.js"; 
+import { upload_reviews } from "./upload_graph/upload_reviews.js";
 
 export {
   get_commits,
@@ -34,5 +37,9 @@ export {
   upload_ADDED_FILE_relation,
   upload_methods,
   upload_COMMIT_CREATED_METHOD_relation,
-  upload_COMMIT_MODIFIED_METHOD_relation
+  upload_COMMIT_MODIFIED_METHOD_relation,
+  upload_pulls,
+  get_patches,
+  get_reviews,
+  upload_reviews
 };

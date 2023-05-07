@@ -1,15 +1,16 @@
 import fs from 'fs';
 import {spawn} from 'child_process';
 
-function get_methods(repo_owner, repo_name, path_methods, path_log, git_token) {
+function get_methods(repo_owner, repo_name, path_methods, path_log, git_token, branch) {
     console.log("Methods are started to being fetched");
     return new Promise((resolve, reject) => {
       
-        var process = spawn('python3',["./controllers/methods_git.py", repo_owner, repo_name, git_token] );        
+        var process = spawn('python3',["./controllers/methods_git.py", repo_owner, repo_name, git_token, branch] );        
         fs.writeFileSync(path_methods, "")
 
         process.stdout.on('data', function(data) {
             var dataStr =  data.toString()
+            console.log(dataStr);
             fs.appendFileSync(path_methods,  dataStr )
         } )    
 

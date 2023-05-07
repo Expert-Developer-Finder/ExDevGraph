@@ -1,12 +1,12 @@
 import neo4j, { Node, Relationship, Integer, auth } from 'neo4j-driver';
 export const getRecommendations = async (req, response) => {
-    var { source, path, repoId} = req.body;
+    var { source, path, repoId, methodSignature} = req.body;
 
     if(path[0] == "/") {
         path = path.substring(1);
     }
 
-    console.log(path);
+    console.log(source);
 
 
     try {
@@ -108,7 +108,7 @@ export const getRecommendations = async (req, response) => {
                
 
 
-        } else { // source is folder
+        } else if (source == "folder") { // source is folder
             // Get the commits and recency
 
              var res = await session.readTransaction(txc =>
@@ -185,6 +185,14 @@ export const getRecommendations = async (req, response) => {
                 }
 
             }
+
+        } else if (source == "method") {
+            console.log(methodSignature)
+
+            // Method için gereken query buraya gelecek TODO
+        
+
+
 
         }
 

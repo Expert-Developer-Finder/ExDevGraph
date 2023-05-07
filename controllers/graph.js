@@ -2,8 +2,6 @@ import fs from "fs";
 import fss from "fs/promises";
 import neo4j from "neo4j-driver";
 import dotenv from "dotenv";
-import { graph_pulls_create, fetchPatchData } from "./patch.js";
-import { fetchReviewData_invalidJson, graph_review_create } from "../controllers/reviews.js";
 import {
   upload_authors,
   upload_commits,
@@ -21,7 +19,11 @@ import {
   get_methods,
   upload_methods,
   upload_COMMIT_CREATED_METHOD_relation,
-  upload_COMMIT_MODIFIED_METHOD_relation
+  upload_COMMIT_MODIFIED_METHOD_relation,
+  upload_pulls,
+  get_patches,
+  get_reviews,
+  upload_reviews
 }from "./helpers/index.js";
 import { check_and_create_file } from "./helpers/helpers.js";
 
@@ -104,7 +106,7 @@ async function  fetch_data(repo_owner, repo_name, methods, commits, rest_commits
   console.log("Starting to fetch data");
 
   // // Simultaneously collect every required data
-  const methods_fetched = get_methods( repo_owner, repo_name, methods, log, "erhjker");
+  const methods_fetched = get_methods( repo_owner, repo_name, methods, log, tokens[0], branch);
   const commits_fetched = get_commits(repo_owner, repo_name, commits, log, tokens);
   const rest_commits_fetched = get_rest_commits( repo_owner, repo_name, rest_commits, log, tokens);
   const issues_and_prs_fetched = get_issues_and_prs( repo_owner, repo_name, issues, pulls, log, tokens);
@@ -112,14 +114,13 @@ async function  fetch_data(repo_owner, repo_name, methods, commits, rest_commits
 
   await issues_and_prs_fetched;
   // Only after issues_and_prs_fetched done, fetch the PR patches
-  // //await get_pr_patchs(repo_owner, repo_name, patches, pulls, log, tokens);
-  const patch_data_fetched =  fetchPatchData(pulls, patches, tokens, repo_owner, repo_name);
-  const review_data_fetched =  fetchReviewData_invalidJson(pulls, reviews, tokens, repo_owner, repo_name);
+  const patch_data_fetched =  get_patches(pulls, patches, tokens, repo_owner, repo_name, log);
+  const review_data_fetched =  get_reviews(pulls, reviews, tokens, repo_owner, repo_name,log);
 
   // Wait for data fetching to end
   await rest_commits_fetched;
   await tree_fetched;
-  await methods_fetched;
+  await methods_fetched
   await commits_fetched;
   await patch_data_fetched;
   await review_data_fetched;
@@ -320,10 +321,8 @@ async function upload_graph(
 
       
     //Be careful! This is an async function and has to be run after authors and commits are created!
-    await graph_pulls_create(patches_path, session);
-    console.log("Pull Request data uploaded.");
-    await graph_review_create(reviews_path, session);
-    console.log("Review data uploaded.");
+    await upload_pulls(patches_path, session);
+    await upload_reviews(reviews_path, session);
 
 
     console.log("GRAPH CREATED!");

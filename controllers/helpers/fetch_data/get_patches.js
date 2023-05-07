@@ -1,13 +1,6 @@
 import fs from "fs";
-import path from "path";
 import axios from "axios";
-
-//TODO do this non hard coded way
-var pulls_path = "data/chaoss/grimoirelab-perceval/pulls.json";
-var repo_owner = "chaoss";
-var repo_name = "grimoirelab-perceval";
-var tokens = ["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"];
-const patch_path = `./data/${repo_owner}/${repo_name}/patches.json`;
+import { sleep } from "../helpers.js";
 
 const hashRegex = /^From (\S*)/;
 const authorRegex = /^From:\s?([^<].*[^>])?\s+(<(.*)>)?/;
@@ -16,6 +9,7 @@ const fileLinesRegex = /^@@ -([0-9]*),?\S* \+([0-9]*),?/;
 const similarityIndexRegex = /^similarity index /;
 const addedFileModeRegex = /^new file mode /;
 const deletedFileModeRegex = /^deleted file mode /;
+
 function parseGitPatch(patch) {
   if (typeof patch !== "string") {
     throw new Error("Expected first argument (patch) to be a string");
@@ -104,6 +98,8 @@ function parseGitPatch(patch) {
   });
   return parsedPatch;
 }
+
+
 function splitIntoParts(lines, separator) {
   const parts = [];
   let currentPart;
@@ -123,14 +119,16 @@ function splitIntoParts(lines, separator) {
   return parts;
 }
 
-export async function fetchPatchData(
+async function get_patches(
   pulls_path,
   patch_path,
   tokens,
   repo_owner,
-  repo_name
+  repo_name,
+  log_path
 ) {
-  console.log("Patch collection started");
+  console.log("Fetching patches started");
+  var token_no= 0 ;
   //TODO: Make the graph.js output a valid json.
   var f = fs.readFileSync(pulls_path, "utf-8");
   const pullsLinesSplitted = f.split(/\r?\n/);
@@ -144,27 +142,60 @@ export async function fetchPatchData(
     if (line.length) {
       i++;
       var pr = JSON.parse(line);
+      if (pr.number % 10 == 0) {
+        console.log(`Fetching patch for issue number ${pr.number}`);
+        fs.appendFileSync(log_path,`Fetching patch for issue number ${pr.number}\n` );
+        
+      }
       if (pr.pull_request.merged_at === null) {
         continue;
       }
 
-      console.log(pr.pull_request.patch_url);
-      const config = {
-        headers: { Authorization: `Bearer ${tokens[0]}` }, //TODO: Prepare Muliple token
-      };
-      console.log();
-      var { data } = await axios.get(
-        "https://patch-diff.githubusercontent.com/raw/" +
-          repo_owner +
-          "/" +
-          repo_name +
-          "/pull/" +
-          pr.number +
-          ".patch",
-        config
-      );
-      //console.log(data)
-      //Somehow divide mulitple commit patch data
+      var okToGo = false
+      while (okToGo == false) {
+        okToGo = true;
+
+        try {
+          const config = {
+            headers: { Authorization: `Bearer ${tokens[token_no]}` }, //TODO: Prepare Multiple token
+          };
+  
+          var { data } = await axios.get(
+            "https://patch-diff.githubusercontent.com/raw/" +
+              repo_owner +
+              "/" +
+              repo_name +
+              "/pull/" +
+              pr.number +
+              ".patch",
+            config
+          );
+          
+        } catch (e) {
+          okToGo = false;
+          if(e.response.status == 403 ) {
+            fs.appendFileSync(log_path, `PATCH: TOKEN ${tokens[token_no]} WAS OVER! We changed the token and moved on!\n`);
+            console.log(`nPATCH: TOKEN ${tokens[token_no]} WAS OVER! We changed the token and moved on!\n`);
+            token_no += 1;
+            token_no = token_no % tokens.length
+  
+            // if we have tried every token, let's wait for 15 minutes before trying again
+            if(token_no == 0) {
+              fs.appendFileSync(log_path, `PATCH: ALL TOKENS WERE OVER! Sleeping for 15 minutes. Sleeping time ${new Date()} \n`);
+              console.log( `PATCH: ALL TOKENS WERE OVER! Sleeping for 15 minutes. Sleeping time ${new Date()} \n`);
+              await sleep(60000*15); 
+              fs.appendFileSync(log_path, `\nPATCH: Waking up. time:  ${new Date()} \n`);
+              console.log(`PATCH: Waking up. time:  ${new Date()} \n`);
+            }
+          } else {
+              // might be a server error or something else might have gone wrong
+              fs.appendFileSync(log_path, `\nPATCH: Something went wrong! ${e.message} \n`);
+              console.log( `PATCH: Something went wrong! ${e.message} \n`);
+          } 
+        }
+      }
+      
+      //Somehow divide multiple commit patch data
       var fArr = data.split(/(From \w{40} )/g);
       var concatFArr = [];
       for (let i = 0; i < (fArr.length - 1) / 2; i++) {
@@ -172,91 +203,25 @@ export async function fetchPatchData(
         concatFArr[i] = element;
       }
       concatFArr.forEach((element, index) => {
-        console.log(pr.number + "//" + index);
         concatFArr[index] = parseGitPatch(element);
       });
-      //console.log(concatFArr)
+
       pr["patch"] = concatFArr;
 
       if (i === pullsLinesSplitted.length - 1) {
-        console.log("last");
         fetched_patches = fetched_patches + JSON.stringify(pr);
       } else {
         fetched_patches = fetched_patches + JSON.stringify(pr) + ",\n";
       }
     }
   }
+
+
   var fetched_patches = fetched_patches + "]";
   fs.appendFileSync(patch_path, fetched_patches);
+  console.log( "Patches have been fetched");
+  fs.appendFileSync(log_path, "Patches have been fetched");
 }
 
-export async function graph_pulls_create(path_patches, session) {
-  //MERGE PRS
-  const pullsLines = JSON.parse(fs.readFileSync(path_patches, "utf-8"));
-  const maxCount = pullsLines.length;
-  var currentCount = 0;
-  for (var pr of pullsLines) {
-    var prDate = pr.closed_at;
-    var prTitle = pr.title;
-    var prNumber = pr.number;
+export {get_patches}
 
-    currentCount++;
-    console.log(`Uploading PR Data ${currentCount} / ${maxCount}`, {
-      prNumber,
-      prTitle,
-    });
-
-    try {
-      //Create Pull node
-      const res1 = await session.executeWrite((tx) =>
-        tx.run(
-          `
-                CREATE (u:Pull{
-                    prNumber: $prNumber,
-                    prTitle: $prTitle,
-                    prDate: $prDate
-                })RETURN u`,
-          { prNumber, prTitle, prDate }
-        )
-      );
-
-      //Create connections for every commit and author
-      for (const patch of pr.patch) {
-        var prSubmitterLogin = pr.user.login;
-        console.log("inside for each patch");
-        console.log(prSubmitterLogin);
-        var prAuthorName = patch.authorName;
-        var prAuthorEmail = patch.authorEmail;
-        //console.log(username);
-        var commit = patch.hash;
-
-        //Create (Pull)-[SUBMITED_PR_BY]->(Author) relation
-        const res2 = await session.executeWrite((tx) =>
-          tx.run(
-            `
-                MATCH (a:Author {authorLogin: $prSubmitterLogin})
-                MATCH (p:Pull {prNumber: $prNumber})
-                MERGE (p)-[:SUBMITED_PR_BY]->(a)`,
-            { prSubmitterLogin, prNumber }
-          )
-        );
-
-        //Create (Commit)-[CONTAINED_IN_PR]->(Pull) relation
-        const res3 = await session.executeWrite((tx) =>
-          tx.run(
-            `
-                MATCH (p:Pull {prNumber: $prNumber})
-                MATCH (c:Commit {hash: $commit})
-                MERGE (c)-[:CONTAINED_IN_PR]->(p)`,
-            { prNumber, commit }
-          )
-        );
-      }
-    } catch (error) {
-      console.log("PR data upload failed. Issue Number: " + prNumber);
-      console.log(error);
-    }
-  }
-}
-
-//fetchPatchData(pulls_path, patch_path, tokens)

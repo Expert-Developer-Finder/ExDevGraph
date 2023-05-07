@@ -2,8 +2,7 @@ import fs from 'fs';
 import axios from  'axios';
 
 async function get_tree(repo_owner, repo_name, branch, path_tree, log_path, tokens) {
-    console.log(repo_owner);
-    console.log(repo_name);
+
     try {
         const config = {
             headers: { Authorization: `Bearer ${tokens[0]}` },
@@ -26,7 +25,7 @@ async function get_tree(repo_owner, repo_name, branch, path_tree, log_path, toke
             `TREE: Error occured while fetching the tree of ${repo_owner}/${repo_name}: ${error.message}`
         );
         fs.appendFileSync(log_path, 
-            `\nTREE: Error occured while fetching the tree of ${repo_owner}/${repo_name}: ${error.message}`
+            `\nTREE: Error occured while fetching the tree of ${repo_owner}/${repo_name}: ${error.message}\n`
         );
     }
    
