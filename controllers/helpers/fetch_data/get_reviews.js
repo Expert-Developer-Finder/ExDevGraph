@@ -81,7 +81,7 @@ async function get_reviews(
 
             if (i%10 == 0){
                 console.log(`Processing reviews: ${Math.floor(i / pullLength * 100)}%`);
-                fs.appendFileSync(log_path, `Processing reviews: ${Math.floor(i / pullLength * 100)}%`)
+                fs.appendFileSync(log_path, `Processing reviews: ${Math.floor(i / pullLength * 100)}%\n`)
             }
             if (data.length === 0) {
                 continue;

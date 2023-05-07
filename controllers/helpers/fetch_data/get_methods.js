@@ -20,8 +20,8 @@ function get_methods(repo_owner, repo_name, path_methods, path_log, git_token, b
         });
         
         process.stdout.on('close', (code) => {
-            console.log("COMMITS: finished");
-            fs.appendFileSync(path_log, "\nCOMMITS: Finished fetching")
+            console.log("METHODS: finished");
+            fs.appendFileSync(path_log, "METHODS: Finished fetching\n")
             resolve(code);
         } ) 
     });

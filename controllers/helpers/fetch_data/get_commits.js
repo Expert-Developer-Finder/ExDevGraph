@@ -19,7 +19,7 @@ function get_commits(repo_owner, repo_name, path_commits, path_log) {
         
         process.stdout.on('close', (code) => {
             console.log("COMMITS: finished");
-            fs.appendFileSync(path_log, "\nCOMMITS: Finished fetching")
+            fs.appendFileSync(path_log, "COMMITS: Finished fetching\n")
             resolve(code);
         } ) 
     });

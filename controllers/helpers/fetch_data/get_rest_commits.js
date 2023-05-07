@@ -58,22 +58,22 @@ async function get_rest_commits(repo_owner, repo_name, path_commits, log_path, t
           console.log(e);
           // the token might have been expired
           if(e.response.status == 403 ) {
-              fs.appendFileSync(log_path, `\nCOMMIT REST: TOKEN ${tokens[token_no]} WAS OVER! We changed the token and moved on!\n`);
+              fs.appendFileSync(log_path, `COMMIT REST: TOKEN ${tokens[token_no]} WAS OVER! We changed the token and moved on!\n`);
               console.log(`COMMIT REST:: TOKEN ${tokens[token_no]} WAS OVER! We changed the token and moved on!\n`);
               token_no += 1;
               token_no = token_no % tokens.length
     
               // if we have tried every token, let's wait for 15 minutes before trying again
               if(token_no == 0) {
-                fs.appendFileSync(log_path, `\nCOMMIT REST:: ALL TOKENS WERE OVER! Sleeping for 15 minutes. Sleeping time ${new Date()} \n`);
+                fs.appendFileSync(log_path, `COMMIT REST:: ALL TOKENS WERE OVER! Sleeping for 15 minutes. Sleeping time ${new Date()} \n`);
                 console.log( `COMMIT REST: ALL TOKENS WERE OVER! Sleeping for 15 minutes. Sleeping time ${new Date()} \n`);
                 await sleep(60000*15); 
-                fs.appendFileSync(log_path, `\nCOMMIT REST: Waking up. time:  ${new Date()} \n`);
+                fs.appendFileSync(log_path, `COMMIT REST: Waking up. time:  ${new Date()} \n`);
                 console.log(`COMMIT REST: Waking up. time:  ${new Date()} \n`);
               }
           } else {
               // might be a server error or something else might have gone wrong
-              fs.appendFileSync(log_path, `\nCOMMIT REST: Something went wrong! ${e.message} \n`);
+              fs.appendFileSync(log_path, `COMMIT REST: Something went wrong! ${e.message} \n`);
               console.log( `COMMIT REST: Something went wrong! ${e.message} \n`);
           }
           // Whatever happens, when an error is caught, it is handled

@@ -28,7 +28,7 @@ async function upload_reviews(path_reviews, session) {
                 RETURN a,r,p`,
                     { username, prNumber }
                 )
-            );b
+            );
         }
 
     }

@@ -220,7 +220,7 @@ async function get_patches(
   var fetched_patches = fetched_patches + "]";
   fs.appendFileSync(patch_path, fetched_patches);
   console.log( "Patches have been fetched");
-  fs.appendFileSync(log_path, "Patches have been fetched");
+  fs.appendFileSync(log_path, "Patches have been fetched\n");
 }
 
 export {get_patches}

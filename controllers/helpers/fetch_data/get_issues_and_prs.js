@@ -62,7 +62,7 @@ async function get_issues_and_prs(repo_owner, repo_name, path_issues, path_prs, 
                   `ISSUES & PRs:Fethced all issues and pull requests of ${repo_owner}/${repo_name} and extracted them to ${path_issues} and ${path_prs}`
               );
               fs.appendFileSync(log_path, 
-                  `\nISSUES & PRs: Fethced all issues and pull requests of ${repo_owner}/${repo_name} and extracted them to ${path_issues} and ${path_prs}\n`  
+                  `ISSUES & PRs: Fetcced all issues and pull requests of ${repo_owner}/${repo_name} and extracted them to ${path_issues} and ${path_prs}\n`  
               );
               terminated_sucessfully = true
               break;

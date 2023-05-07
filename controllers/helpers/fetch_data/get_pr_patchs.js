@@ -78,10 +78,10 @@ async function get_pr_patchs(repo_owner, repo_name, path, path_prs, log_path, to
   }
 
   console.log(
-    `PR_PATCHES: Fethced all issue timelines of ${repo_owner}/${repo_name} and extracted them to ${path}`
+    `PR_PATCHES: Fetched all issue timelines of ${repo_owner}/${repo_name} and extracted them to ${path}`
   );
   fs.appendFileSync(log_path, 
-    `PR_PATCHES: Fethced all issue timelines of ${repo_owner}/${repo_name} and extracted them to ${path}\n`
+    `PR_PATCHES: Fetched all issue timelines of ${repo_owner}/${repo_name} and extracted them to ${path}\n`
   );
 
   return;
