@@ -3,6 +3,7 @@ import { get_issues_and_prs } from "./fetch_data/get_issues_and_prs.js";
 import { get_pr_patchs } from "./fetch_data/get_pr_patchs.js";
 import { get_rest_commits } from "./fetch_data/get_rest_commits.js";
 import { get_tree } from "./fetch_data/get_tree.js";
+import { get_methods } from "./fetch_data/get_methods.js";
 import { upload_authors } from "./upload_graph/upload_authors.js";
 import {upload_commits} from "./upload_graph/upload_commits.js";
 import {upload_COMMITTED_BY_relation} from "./upload_graph/upload_COMMITTED_BY_relation.js";
@@ -18,6 +19,7 @@ export {
   get_pr_patchs,
   get_rest_commits,
   get_tree,
+  get_methods,
   upload_authors,
   upload_commits,
   upload_COMMITTED_BY_relation,

@@ -4,3 +4,4 @@
 .env
 /.DS_Store
 tests/aura_tuna_test.env
+/controllers/venv

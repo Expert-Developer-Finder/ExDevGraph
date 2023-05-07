@@ -5,7 +5,7 @@ function get_methods(repo_owner, repo_name, path_methods, path_log, git_token) {
     console.log("GİRİSS");
     return new Promise((resolve, reject) => {
       
-        var process = spawn('C:/Program Files/Python311/python3.exe',["./controllers/methods_git.py", repo_owner, repo_name, git_token] );        
+        var process = spawn('python3',["./controllers/methods_git.py", repo_owner, repo_name, git_token] );        
         fs.writeFileSync(path_methods, "")
 
         process.stdout.on('data', function(data) {
