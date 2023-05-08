@@ -77,7 +77,7 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
 
     // Fetch the data
     /** If the data already has been fetched, comment for the development */
-    await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
+    // await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
     
     // Upload the data to Neo4j
     await upload_graph(commits, tree, rest_commits, patches, reviews, methods);
@@ -318,9 +318,7 @@ async function upload_graph(
     await upload_ADDED_FILE_relation(COMMIT_FILE, session);
     await upload_COMMIT_CREATED_METHOD_relation(COMMIT_CREATED_METHOD, COMMIT_AUTHOR, session);
     await upload_COMMIT_MODIFIED_METHOD_relation(COMMIT_MODIFIED_METHOD,COMMIT_AUTHOR, session);
-
-      
-    //Be careful! This is an async function and has to be run after authors and commits are created!
+    //Be careful! This the below functions need to be called after the creation of authors and commits
     await upload_pulls(patches_path, session);
     await upload_reviews(reviews_path, session);
 

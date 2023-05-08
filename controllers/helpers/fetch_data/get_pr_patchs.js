@@ -42,7 +42,7 @@ async function get_pr_patchs(repo_owner, repo_name, path, path_prs, log_path, to
   
         /////////////////////////////////////////////////////////////////
         can_go = true;
-        if(i%10==0) {
+        if(i%100==0) {
           console.log( "PR_PATCHES: " +i +"th pr has been looked up");
         }
       } catch (e) {

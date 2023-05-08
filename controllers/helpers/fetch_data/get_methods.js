@@ -10,7 +10,6 @@ function get_methods(repo_owner, repo_name, path_methods, path_log, git_token, b
 
         process.stdout.on('data', function(data) {
             var dataStr =  data.toString()
-            console.log(dataStr);
             fs.appendFileSync(path_methods,  dataStr )
         } )    
 
