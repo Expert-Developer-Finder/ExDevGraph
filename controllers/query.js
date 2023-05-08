@@ -58,8 +58,6 @@ export const getRecommendations = async (req, response) => {
                 })
             });
 
-
-
             // Get the prs
             res = await session.readTransaction(txc =>
                 txc.run(
@@ -138,7 +136,6 @@ export const getRecommendations = async (req, response) => {
                     "totalScore" : 0
                 })
             });
-
         
             // Get the prs
             // res = await session.readTransaction(txc =>

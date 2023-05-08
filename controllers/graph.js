@@ -307,17 +307,17 @@ async function upload_graph(
     console.log("No of FOLDER_FOLDER: " + FOLDER_FOLDER.size);
 
     await upload_authors(authors, session);
-    await upload_commits(commits, session);
-    await upload_files(files, session);
-    await upload_folders(folders, session);
-    await upload_methods(METHODS, commits, session);
+    // await upload_commits(commits, session);
+    // await upload_files(files, session);
+    // await upload_folders(folders, session);
+    // await upload_methods(METHODS, commits, session);
 
-    await upload_FOFO_relation(FOLDER_FOLDER, session);
-    await upload_FOFI_relation( FOLDER_FILE, session)
-    await upload_COMMITTED_BY_relation(COMMIT_AUTHOR, session);
-    await upload_ADDED_FILE_relation(COMMIT_FILE, session);
-    await upload_COMMIT_CREATED_METHOD_relation(COMMIT_CREATED_METHOD, COMMIT_AUTHOR, session);
-    await upload_COMMIT_MODIFIED_METHOD_relation(COMMIT_MODIFIED_METHOD,COMMIT_AUTHOR, session);
+    // await upload_FOFO_relation(FOLDER_FOLDER, session);
+    // await upload_FOFI_relation( FOLDER_FILE, session)
+    // await upload_COMMITTED_BY_relation(COMMIT_AUTHOR, session);
+    // await upload_ADDED_FILE_relation(COMMIT_FILE, session);
+    // await upload_COMMIT_CREATED_METHOD_relation(COMMIT_CREATED_METHOD, COMMIT_AUTHOR, session);
+    // await upload_COMMIT_MODIFIED_METHOD_relation(COMMIT_MODIFIED_METHOD,COMMIT_AUTHOR, session);
     //Be careful! This the below functions need to be called after the creation of authors and commits
     await upload_pulls(patches_path, session);
     await upload_reviews(reviews_path, session);

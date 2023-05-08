@@ -73,10 +73,7 @@ async function get_reviews(
             
             
             }
-            
-            
-            
-           
+               
             // Data Array olarak geliyor. Github direkt json olarak gönderiyor NORMALDE. Token bitince falan patlama olasılığı yüksek.
 
             if (i%100 == 0){

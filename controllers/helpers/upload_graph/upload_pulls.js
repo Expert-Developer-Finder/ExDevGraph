@@ -12,7 +12,7 @@ async function upload_pulls(path_patches, session) {
       var prNumber = pr.number;
   
       currentCount++;
-      console.log(`Uploading PR Data ${currentCount / maxCount * 100}%`);
+      console.log(`Uploading PR Data ${(currentCount / maxCount * 100).toPrecision(2)}%`);
   
       try {
         //Create Pull node
