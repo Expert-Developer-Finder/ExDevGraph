@@ -187,19 +187,47 @@ export const getRecommendations = async (req, response) => {
             }
 
         } else if (source == "method") {
-            console.log(methodSignature)
+            console.log(`In method and method signature is ${methodSignature} and path is ${path}`);
+            var index_of_open_bracket = methodSignature.indexOf("(") 
+            var trimmedSignature = methodSignature.slice(4, index_of_open_bracket);
 
             // Method için gereken query buraya gelecek TODO
+            res = await session.readTransaction(txc =>
+                txc.run(
+                `WITH $path as fPath, $trimmedSignature as fName
+                MATCH (Method{filePath: fPath, functionName: fName})
+                MATCH (author:Author)<-[:COMMITED_BY]-(:Commit)-[commitMod:COMMIT_MODIFIED_METHOD]->(Method)
+                WITH Method, author, COUNT(commitMod) as modificationCount
+                OPTIONAL MATCH (authorAlso:Author)<-[:COMMITED_BY]-(:Commit)-[commitCreated:COMMIT_CREATED_METHOD]->(Method)
+                WHERE authorAlso = author
+                WITH  2 as creatingWeight, 1 as modifyWeight, Method, author, modificationCount, authorAlso ,COUNT(commitCreated) as creatorCount
+                RETURN author.authorLogin as authorName, Method.functionName as methodName,(CASE WHEN creatorCount > 0 THEN creatingWeight ELSE 0 END) as creatorCount ,modificationCount * modifyWeight as MethodModifyScore, modificationCount * modifyWeight + (CASE WHEN creatorCount > 0 THEN creatingWeight ELSE 0 END) as MethodKnowAboutScore ORDER BY MethodKnowAboutScore DESC LIMIT 3
+                `,
+                { path, trimmedSignature}
+                )
+            );
         
-
-
+            res.records.forEach((r)=> {
+                expertsAndScores.push({
+                    "authorName": r._fields[0],
+                    "creatorCount": r._fields[2].low,
+                    "methodModifyScore": r._fields[3].low,
+                    "methodKnowAboutScore":  typeof( r._fields[4]) == "object"  ? r._fields[4].low: r._fields[4] ,
+                    "totalScore" :  typeof( r._fields[4]) == "object"  ? r._fields[4].low: r._fields[4] ,
+                })
+            });
 
         }
 
+
         // Calculate the total Scores
         for (var i = 0; i < expertsAndScores.length; i++) {
-            var item = expertsAndScores[i];
-            expertsAndScores[i].totalScore =  (0.5 * expertsAndScores[i].commitCount) + (0.5 * expertsAndScores[i].recentCommitScore) + expertsAndScores[i].prKnowAboutScore
+            if ( source == "method") {
+                expertsAndScores[i].totalScore =  expertsAndScores[i].methodKnowAboutScore
+            } else {
+                var item = expertsAndScores[i];
+                expertsAndScores[i].totalScore =  (0.5 * expertsAndScores[i].commitCount) + (0.5 * expertsAndScores[i].recentCommitScore) + expertsAndScores[i].prKnowAboutScore
+            }
         }
 
         // Sort by totalScore
