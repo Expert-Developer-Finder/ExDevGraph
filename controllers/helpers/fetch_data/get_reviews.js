@@ -76,9 +76,9 @@ async function get_reviews(
                
             // Data Array olarak geliyor. Github direkt json olarak gönderiyor NORMALDE. Token bitince falan patlama olasılığı yüksek.
 
-            if (i%100 == 0){
+            if (i%1000 == 0){
                 console.log(`Processing reviews: ${i} / ${pullLength} `);
-                fs.appendFileSync(log_path, `Processing reviews: ${Math.floor(i / pullLength * 100)}%\n`)
+                fs.appendFileSync(log_path, `PProcessing reviews: ${i} / ${pullLength}%\n`)
             }
             if (data.length === 0) {
                 continue;

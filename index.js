@@ -18,7 +18,9 @@ app.use(cors());
 app.get("/", (req, res)=> {
     return res.status(200).json("Hi");
 })
-
+app.get("/hw", (req, res)=> {
+    return res.status(200).json("Hello world");
+})
 
 app.use("/graph", graphRouter);
 app.use("/query", queryRouter);

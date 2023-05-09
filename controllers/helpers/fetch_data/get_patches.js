@@ -142,7 +142,7 @@ async function get_patches(
     if (line.length) {
       i++;
       var pr = JSON.parse(line);
-      if (pr.number % 10 == 0) {
+      if (pr.number % 1000 == 0) {
         console.log(`Fetching patch for issue number ${pr.number}`);
         fs.appendFileSync(log_path,`Fetching patch for issue number ${pr.number}\n` );
         

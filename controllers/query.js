@@ -54,7 +54,8 @@ export const getRecommendations = async (req, response) => {
                     "commitCount": r._fields[1].low,
                     "recentCommitScore": typeof( r._fields[2]) == "object"  ? r._fields[2].low: r._fields[2] ,
                     "prKnowAboutScore": 0,
-                    "totalScore" : 0
+                    "totalScore" : 0,
+                    "reviewKnowAboutScore": 0
                 })
             });
 
@@ -80,6 +81,30 @@ export const getRecommendations = async (req, response) => {
                 })
             });
 
+            // review know about score
+            res = await session.readTransaction(txc =>
+                txc.run(
+                `
+                with $path as filePath
+                match(a:Author)<-[rb:REVIEWED_BY]-(p:Pull)<-[cip:CONTAINED_IN_PR]-(c:Commit)-[af:ADDED_FILE]->(f:File{path:filePath}) 
+                return a.authorLogin as AuthorLogin, count(*) as ReviewKnowAboutScore
+    
+                `,
+                { path}
+                )
+            );
+
+
+            res.records.forEach((r)=> {
+                for ( var i = 0; i < expertsAndScores.length; i++) {
+                    var item = expertsAndScores[i]; 
+                    if (item.authorName ==  r._fields[0]){
+                        item.reviewKnowAboutScore = typeof( r._fields[1]) == "object"  ? r._fields[1].low: r._fields[1] 
+                        added = true
+                    } 
+                }
+
+            });
 
             for (var j = 0; j< temp.length; j++) {
                 var outerItem = temp[j];
@@ -97,6 +122,7 @@ export const getRecommendations = async (req, response) => {
                         "commitCount": 0, 
                         "recentCommitScore": 0,
                         "prKnowAboutScore": outerItem.prKnowAboutScore,
+                        "reviewKnowAboutScore": 0,
                         "totalScore" : 0
 
                     })
@@ -133,6 +159,7 @@ export const getRecommendations = async (req, response) => {
                     "commitCount": r._fields[1].low,
                     "recentCommitScore": typeof( r._fields[2]) == "object"  ? r._fields[2].low: r._fields[2] ,
                     "prKnowAboutScore": 0,
+                    "reviewKnowAboutScore": 0,
                     "totalScore" : 0
                 })
             });
@@ -159,6 +186,28 @@ export const getRecommendations = async (req, response) => {
             //     })
             // });
 
+            res = await session.readTransaction(txc =>
+                txc.run(
+                `
+                with $path as folderPath
+                match(a:Author)<-[rb:REVIEWED_BY]-(p:Pull)<-[cip:CONTAINED_IN_PR]-(c:Commit)-[af:ADDED_FILE]->(f:File)-[ifofi:INSIDE_FOFI]->(foChild:Folder)-[ifofo:INSIDE_FOFO*0..]->(fo:Folder{path:folderPath}) return a.authorLogin as AuthorLogin, count(*) as ReviewKnowAboutScore
+                `,
+                { path}
+                )
+            );
+
+            console.log(res);
+
+            res.records.forEach((r)=> {
+                for ( var i = 0; i < expertsAndScores.length; i++) {
+                    var item = expertsAndScores[i]; 
+                    if (item.authorName ==  r._fields[0]){
+                        item.reviewKnowAboutScore = typeof( r._fields[1]) == "object"  ? r._fields[1].low: r._fields[1] 
+                        added = true
+                    } 
+                }
+
+            });
 
             for (var j = 0; j< temp.length; j++) {
                 var outerItem = temp[j];
@@ -176,6 +225,7 @@ export const getRecommendations = async (req, response) => {
                         "commitCount": 0, 
                         "recentCommitScore": 0,
                         "prKnowAboutScore": outerItem.prKnowAboutScore,
+                        "reviewKnowAboutScore": 0,
                         "totalScore" : 0
 
                     })
@@ -223,7 +273,7 @@ export const getRecommendations = async (req, response) => {
                 expertsAndScores[i].totalScore =  expertsAndScores[i].methodKnowAboutScore
             } else {
                 var item = expertsAndScores[i];
-                expertsAndScores[i].totalScore =  (0.5 * expertsAndScores[i].commitCount) + (0.5 * expertsAndScores[i].recentCommitScore) + expertsAndScores[i].prKnowAboutScore
+                expertsAndScores[i].totalScore =  (0.5 * expertsAndScores[i].commitCount) + (0.5 * expertsAndScores[i].recentCommitScore) + expertsAndScores[i].prKnowAboutScore + expertsAndScores[i].reviewKnowAboutScore
             }
         }
 
