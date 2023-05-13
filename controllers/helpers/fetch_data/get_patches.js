@@ -129,15 +129,17 @@ async function get_patches(
 ) {
   console.log("Fetching patches started");
   var token_no= 0 ;
-  //TODO: Make the graph.js output a valid json.
   var f = fs.readFileSync(pulls_path, "utf-8");
   const pullsLinesSplitted = f.split(/\r?\n/);
 
-  //Do not take non merged prs
 
-  var fetched_patches = "[";
 
+  // To start fetching patch data from start change i. 
   var i = 0;
+  if (i === 0) {
+    fs.appendFileSync(patch_path, "[");
+  }
+  
   for (var line of pullsLinesSplitted) {
     if (line.length) {
       i++;
@@ -209,16 +211,14 @@ async function get_patches(
       pr["patch"] = concatFArr;
 
       if (i === pullsLinesSplitted.length - 1) {
-        fetched_patches = fetched_patches + JSON.stringify(pr);
+        fs.appendFileSync(patch_path, JSON.stringify(pr));
       } else {
-        fetched_patches = fetched_patches + JSON.stringify(pr) + ",\n";
+        fs.appendFileSync(patch_path, JSON.stringify(pr) +",\n" ); ;
       }
     }
   }
 
-
-  var fetched_patches = fetched_patches + "]";
-  fs.appendFileSync(patch_path, fetched_patches);
+  fs.appendFileSync(patch_path, "]");
   console.log( "Patches have been fetched");
   fs.appendFileSync(log_path, "Patches have been fetched\n");
 }
