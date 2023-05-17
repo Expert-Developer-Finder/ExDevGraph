@@ -1,4 +1,26 @@
 import neo4j, { Node, Relationship, Integer, auth } from 'neo4j-driver';
+
+const getNeo4jCredentials = async (repoId)  => {
+    const data = await fetch(`${process.env.SERVER_BASE_URL}/repos/name/${repoId}`);
+    const repoFullName = await data.json();
+    var isCeydas = ( repoFullName.owner == "ceydas" && repoFullName.name == "exdev_test")
+
+    let uri;
+    let user;
+    let password;
+    if (isCeydas) {
+        uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
+        user = "neo4j"
+        password = "kücük123"
+    } else {
+        uri =  "neo4j+s://8c4cdf6a.databases.neo4j.io"
+        user = "neo4j"
+        password = "büyük123"
+    }
+
+    return [uri, user, password]
+}
+
 export const getRecommendations = async (req, response) => {
     var { source, path, repoId, methodSignature} = req.body;
 
@@ -6,29 +28,15 @@ export const getRecommendations = async (req, response) => {
         path = path.substring(1);
     }
 
-    console.log(source);
-
-
+    console.log(`A new query arrived. Query type is ${source}`);
+    
     try {
         // connect to neo4j
-        const r = await fetch(`${process.env.SERVER_BASE_URL}/repos/name/${repoId}`);
-        const repoFullName = await r.json();
-        var isCeydas = false
-        if ( repoFullName.owner == "ceydas" && repoFullName.name == "exdev_test") {
-            isCeydas = true
-        }
-        let uri;
-        let user;
-        let password;
-        if (isCeydas) {
-            uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
-            user = "neo4j"
-            password = "kücük123"
-          } else {
-            uri =  "neo4j+s://8c4cdf6a.databases.neo4j.io"
-            user = "neo4j"
-            password = "büyük123"
-        }
+        let credentials = await getNeo4jCredentials(repoId)
+        let uri = credentials[0];
+        let user = credentials[1];
+        let password = credentials[2];
+
         const driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
         const session = driver.session();
         
@@ -37,15 +45,13 @@ export const getRecommendations = async (req, response) => {
         const month = currentDate.getMonth() + 1; // add 1 to get 1-12 month range instead of 0-11
         
         var expertsAndScores = [];
-        let experts =[];
-
 
         if (source == "file") {
-
             // Get the commits and recency
             var res = await session.readTransaction(txc =>
                 txc.run(
-                `WITH 
+               `
+                WITH 
                 $year as currentYear,
                 $month as currentMonth,
                 $path as filePath 
@@ -57,17 +63,19 @@ export const getRecommendations = async (req, response) => {
                   WHEN n.year = currentYear AND currentMonth-n.month=2 THEN 1.5
                     WHEN n.year = currentYear AND currentMonth-n.month=3 THEN 1.25
                   ELSE 1
-                END) AS TotalRecencyScore ORDER BY TotalRecencyScore DESC LIMIT 5
-                `,
+                END) AS TotalRecencyScore ORDER BY TotalRecencyScore DESC`,
                 { path , year, month}
                 )
             );
 
             res.records.forEach((r)=> {
+                var commitCount =  r._fields[1].low;
+                var recentCommitScore = typeof( r._fields[2]) == "object"  ? r._fields[2].low: r._fields[2] ;
                 expertsAndScores.push({
                     "authorName": r._fields[0],
-                    "commitCount": r._fields[1].low,
-                    "recentCommitScore": typeof( r._fields[2]) == "object"  ? r._fields[2].low: r._fields[2] ,
+                    "commitCount":commitCount,
+                    "recentCommitScore": recentCommitScore,
+                    "commitScore": (0.5 * commitCount + 0.5 * recentCommitScore),
                     "prKnowAboutScore": 0,
                     "totalScore" : 0,
                     "reviewKnowAboutScore": 0
@@ -77,12 +85,13 @@ export const getRecommendations = async (req, response) => {
             // Get the prs
             res = await session.readTransaction(txc =>
                 txc.run(
-                `With
+                `
+                WITH 
                 $path as filePath 
-                match(a:Author)<-[spb:SUBMITED_PR_BY]-(p:Pull)<-[cip:CONTAINED_IN_PR]-
-                (c:Commit)-[af:ADDED_FILE]->(f:File{path:filePath})
-                return a.authorLogin as AuthorLogin ,p.prNumber as PrNumber,count(cip) as PRknowAboutScore,f.path as FilePath
-                `,
+                MATCH(p:Pull)<-[cip:CONTAINED_IN_PR]-(c:Commit)-[af:ADDED_FILE]->(f:File{path:filePath}) 
+                WITH DISTINCT p.prNumber as prNum
+                MATCH (a:Author)<-[spb:SUBMITED_PR_BY]-(p:Pull{prNumber: prNum})
+                RETURN a.authorLogin as AuthorLogin, count(spb) as authorPullScore`,
                 { path}
                 )
             );
@@ -91,8 +100,7 @@ export const getRecommendations = async (req, response) => {
             res.records.forEach((r)=> {
                 temp.push({
                     "authorName": r._fields[0],
-                    "prNo": r._fields[1],
-                    "prKnowAboutScore": typeof( r._fields[2]) == "object"  ? r._fields[2].low: r._fields[2] 
+                    "prKnowAboutScore": typeof( r._fields[1]) == "object"  ? r._fields[1].low: r._fields[1] 
                 })
             });
 
@@ -103,12 +111,10 @@ export const getRecommendations = async (req, response) => {
                 with $path as filePath
                 match(a:Author)<-[rb:REVIEWED_BY]-(p:Pull)<-[cip:CONTAINED_IN_PR]-(c:Commit)-[af:ADDED_FILE]->(f:File{path:filePath}) 
                 return a.authorLogin as AuthorLogin, count(*) as ReviewKnowAboutScore
-    
                 `,
                 { path}
                 )
             );
-
 
             res.records.forEach((r)=> {
                 for ( var i = 0; i < expertsAndScores.length; i++) {
@@ -136,6 +142,7 @@ export const getRecommendations = async (req, response) => {
                         "authorName": outerItem.authorName,
                         "commitCount": 0, 
                         "recentCommitScore": 0,
+                        "commitScore": 0,
                         "prKnowAboutScore": outerItem.prKnowAboutScore,
                         "reviewKnowAboutScore": 0,
                         "totalScore" : 0
@@ -145,8 +152,6 @@ export const getRecommendations = async (req, response) => {
 
             }
                
-
-
         } else if (source == "folder") { // source is folder
             // Get the commits and recency
 
@@ -211,8 +216,6 @@ export const getRecommendations = async (req, response) => {
                 )
             );
 
-            console.log(res);
-
             res.records.forEach((r)=> {
                 for ( var i = 0; i < expertsAndScores.length; i++) {
                     var item = expertsAndScores[i]; 
@@ -249,7 +252,6 @@ export const getRecommendations = async (req, response) => {
             }
 
         } else if (source == "method") {
-            console.log(`In method and method signature is ${methodSignature} and path is ${path}`);
             var index_of_open_bracket = methodSignature.indexOf("(") 
             var trimmedSignature = methodSignature.slice(4, index_of_open_bracket);
 
@@ -300,7 +302,7 @@ export const getRecommendations = async (req, response) => {
         // şu pr da birden fazla aynı kişiyi farklı pr ile dönüyo mu
         // commit de aynı adam max bir kere gelcek di mi
 
-        console.log("SENDING");
+        console.log("Query response has been returned");
         return response.status(200).json(expertsAndScores);
         
     } catch (error) {

@@ -273,7 +273,7 @@ async function upload_graph(
         }
 
         authors.add(authorStr);
-        COMMIT_AUTHOR.add([authorStr, commit["data"]["commit"]]);
+        COMMIT_AUTHOR.add([authorStr, commit["data"]["commit"]]); // sha
 
         commit["data"]["files"].forEach((file) => {
           files.add(file["file"]);
