@@ -77,7 +77,7 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
 
     // Fetch the data
     /** If the data already has been fetched, comment for the development */
-    // await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
+    await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
     
     // Upload the data to Neo4j
     var isCeydas = false
