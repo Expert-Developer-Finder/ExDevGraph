@@ -11,9 +11,24 @@ export const getRecommendations = async (req, response) => {
 
     try {
         // connect to neo4j
-        const uri= process.env.NEO4J_URI;
-        const user= process.env.NEO4J_USERNAME;
-        const password = process.env.NEO4J_PASSWORD;
+        const r = await fetch(`${process.env.SERVER_BASE_URL}/repos/name/${repoId}`);
+        const repoFullName = await r.json();
+        var isCeydas = false
+        if ( repoFullName.owner == "ceydas" && repoFullName.name == "exdev_test") {
+            isCeydas = true
+        }
+        let uri;
+        let user;
+        let password;
+        if (isCeydas) {
+            uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
+            user = "neo4j"
+            password = "kücük123"
+          } else {
+            uri =  "neo4j+s://8c4cdf6a.databases.neo4j.io"
+            user = "neo4j"
+            password = "büyük123"
+        }
         const driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
         const session = driver.session();
         

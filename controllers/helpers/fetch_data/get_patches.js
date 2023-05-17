@@ -2,6 +2,7 @@ import fs from "fs";
 import axios from "axios";
 import { sleep } from "../helpers.js";
 
+
 const hashRegex = /^From (\S*)/;
 const authorRegex = /^From:\s?([^<].*[^>])?\s+(<(.*)>)?/;
 const fileNameRegex = /^diff --git "?a\/(.*)"?\s*"?b\/(.*)"?/;
@@ -133,6 +134,7 @@ async function get_patches(
   var f = fs.readFileSync(pulls_path, "utf-8");
   const pullsLinesSplitted = f.split(/\r?\n/);
 
+
   //Do not take non merged prs
 
   var fetched_patches = "[";
@@ -142,7 +144,7 @@ async function get_patches(
     if (line.length) {
       i++;
       var pr = JSON.parse(line);
-      if (pr.number % 1000 == 0) {
+      if (pr.number % 10 == 0) {
         console.log(`Fetching patch for issue number ${pr.number}`);
         fs.appendFileSync(log_path,`Fetching patch for issue number ${pr.number}\n` );
         
@@ -172,8 +174,10 @@ async function get_patches(
           );
           
         } catch (e) {
+          console.log(e);
           okToGo = false;
-          if(e.response.status == 403 ) {
+          if( "errno" in e &&  e.errno ==  -60) {
+          // if(e.response.status == 403 ) {
             fs.appendFileSync(log_path, `PATCH: TOKEN ${tokens[token_no]} WAS OVER! We changed the token and moved on!\n`);
             console.log(`nPATCH: TOKEN ${tokens[token_no]} WAS OVER! We changed the token and moved on!\n`);
             token_no += 1;

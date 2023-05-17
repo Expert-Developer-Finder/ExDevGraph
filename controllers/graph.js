@@ -77,10 +77,15 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
 
     // Fetch the data
     /** If the data already has been fetched, comment for the development */
-    await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
+    // await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
     
     // Upload the data to Neo4j
-    await upload_graph(commits, tree, rest_commits, patches, reviews, methods)
+    var isCeydas = false
+      if ( repo_owner == "ceydas" && repo_name == "exdev_test") {
+        isCeydas = true
+      }
+
+    await upload_graph(commits, tree, rest_commits, patches, reviews, methods, isCeydas)
     
     // Update the creating status of the repository
     fetch(
@@ -135,12 +140,23 @@ async function upload_graph(
   path_rest_commits,
   patches_path,
   reviews_path,
-  methods
+  methods,
+  isCeydas
 ) {
   // Create a Driver Instance
-  const uri = process.env.NEO4J_URI;
-  const user = process.env.NEO4J_USERNAME;
-  const password = process.env.NEO4J_PASSWORD;
+  let uri;
+  let user;
+  let password;
+  if (isCeydas) {
+    uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
+    user = "neo4j"
+    password = "kücük123"
+  } else {
+    uri =  "neo4j+s://8c4cdf6a.databases.neo4j.io"
+    user = "neo4j"
+    password = "büyük123"
+  }
+  
 
   console.log("Uploading graph");
 

@@ -1,5 +1,7 @@
 import fs from "fs";
 import axios from "axios";
+import { sleep } from "../helpers.js";
+
 
 
 async function get_reviews(
@@ -48,8 +50,11 @@ async function get_reviews(
                 );
                 
               } catch (e) {
+                console.log(e);
                 okToGo = false;
-                if(e.response.status == 403 ) {
+
+                if( "errno" in e &&  e.errno ==  -60) {
+                // if(e.response.status == 403 ) {
                     fs.appendFileSync(log_path, `REVIEW: TOKEN ${tokens[token_no]} WAS OVER! We changed the token and moved on!\n`);
                     console.log(`REVIEW: TOKEN ${tokens[token_no]} WAS OVER! We changed the token and moved on!\n`);
                     token_no += 1;
@@ -60,12 +65,12 @@ async function get_reviews(
                     fs.appendFileSync(log_path, `REVIEW: ALL TOKENS WERE OVER! Sleeping for 15 minutes. Sleeping time ${new Date()} \n`);
                     console.log( `REVIEW: ALL TOKENS WERE OVER! Sleeping for 15 minutes. Sleeping time ${new Date()} \n`);
                     await sleep(60000*15); 
-                    fs.appendFileSync(log_path, `\REVIEW: Waking up. time:  ${new Date()} \n`);
+                    fs.appendFileSync(log_path, `REVIEW: Waking up. time:  ${new Date()} \n`);
                     console.log(`REVIEW: Waking up. time:  ${new Date()} \n`);
                     }
                 } else {
                     // might be a server error or something else might have gone wrong
-                    fs.appendFileSync(log_path, `\REVIEW: Something went wrong! ${e.message} \n`);
+                    fs.appendFileSync(log_path, `REVIEW: Something went wrong! ${e.message} \n`);
                     console.log( `REVIEW: Something went wrong! ${e.message} \n`);
                 } 
                 
@@ -76,9 +81,9 @@ async function get_reviews(
                
             // Data Array olarak geliyor. Github direkt json olarak gönderiyor NORMALDE. Token bitince falan patlama olasılığı yüksek.
 
-            if (i%1000 == 0){
+            if (i%10 == 0){
                 console.log(`Processing reviews: ${i} / ${pullLength} `);
-                fs.appendFileSync(log_path, `PProcessing reviews: ${i} / ${pullLength}%\n`)
+                fs.appendFileSync(log_path, `Processing reviews: ${i} / ${pullLength}\n`)
             }
             if (data.length === 0) {
                 continue;
