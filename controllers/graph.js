@@ -120,7 +120,7 @@ async function  fetch_data(repo_owner, repo_name, methods, commits, rest_commits
   await issues_and_prs_fetched;
   // Only after issues_and_prs_fetched done, fetch the PR patches
   const patch_data_fetched =  get_patches(pulls, patches, tokens, repo_owner, repo_name, log);
-  const review_data_fetched =  get_reviews(pulls, reviews, tokens, repo_owner, repo_name,log);
+   const review_data_fetched =  get_reviews(pulls, reviews, tokens, repo_owner, repo_name,log);
 
   // Wait for data fetching to end
   await rest_commits_fetched;
@@ -369,9 +369,9 @@ async function upload_graph(
 
     // await upload_methods(METHODS, session);
 
-    await upload_COMMIT_CREATED_METHOD_relation(COMMIT_CREATED_METHOD, COMMIT_AUTHOR, session);
-    await upload_COMMIT_MODIFIED_METHOD_relation(COMMIT_MODIFIED_METHOD,COMMIT_AUTHOR, session);
-    return;
+    // await upload_COMMIT_CREATED_METHOD_relation(COMMIT_CREATED_METHOD, COMMIT_AUTHOR, session);
+    // await upload_COMMIT_MODIFIED_METHOD_relation(COMMIT_MODIFIED_METHOD,COMMIT_AUTHOR, session);
+
   
 
     console.log("No of authors: " + authors.size);
@@ -382,12 +382,9 @@ async function upload_graph(
     console.log("No of COMMIT_FILE: " + FOLDER_FILE.size);
     console.log("No of FOLDER_FOLDER: " + FOLDER_FOLDER.size);
 
-  
-
-   
-   
+     
     //Be careful! This the below functions need to be called after the creation of authors and commits
-    await upload_pulls(patches_path, session);
+    // await upload_pulls(patches_path, session);
     await upload_reviews(reviews_path, session);
 
 

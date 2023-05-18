@@ -1,19 +1,34 @@
+import { log } from "console";
+import { lookup } from "dns";
 import fs from "fs";
 
 
 async function upload_pulls(path_patches, session) {
     //MERGE PRS
+
     const pullsLines = JSON.parse(fs.readFileSync(path_patches, "utf-8"));
     const maxCount = pullsLines.length;
     var currentCount = 0;
+
+    console.log("Starting to upload PR Data");
+
     for (var pr of pullsLines) {
-      var prDate = pr.closed_at;
+
+      var prDatSt = pr.closed_at;
+      var prDate = Date.parse(prDatSt);
       var prTitle = pr.title;
       var prNumber = pr.number;
   
       currentCount++;
-      console.log(`Uploading PR Data ${(currentCount / maxCount * 100).toPrecision(2)}%`);
-  
+      if (currentCount %  Math.ceil(maxCount / 10) == 0 ) {
+        console.log(
+          "Uploading PR Data: " +
+            Math.ceil((currentCount / (maxCount / 10)) * 10) +
+            "%"
+        );
+
+      }
+      
       try {
         //Create Pull node
         const res1 = await session.executeWrite((tx) =>
@@ -37,13 +52,13 @@ async function upload_pulls(path_patches, session) {
 
           var commit = patch.hash;
   
-          //Create (Pull)-[SUBMITED_PR_BY]->(Author) relation
+          //Create (Pull)-[SUBMITTED_PR_BY]->(Author) relation
           const res2 = await session.executeWrite((tx) =>
             tx.run(
               `
                   MATCH (a:Author {authorLogin: $prSubmitterLogin})
                   MATCH (p:Pull {prNumber: $prNumber})
-                  MERGE (p)-[:SUBMITED_PR_BY]->(a)`,
+                  MERGE (p)-[:SUBMITTED_PR_BY]->(a)`,
               { prSubmitterLogin, prNumber }
             )
           );

@@ -23,10 +23,10 @@ async function upload_reviews(path_reviews, session) {
             const res1 = await session.executeWrite((tx) =>
                 tx.run(
                     `
-                MATCH (a:Author {authorLogin: $username} )
-                MATCH (p:Pull {prNumber: $intPrNo } )
-                MERGE (p)-[r:REVIEWED_BY]->(a)
-                RETURN a,r,p`,
+                        MATCH (a:Author {authorLogin: $username} )
+                        MATCH (p:Pull {prNumber: $intPrNo } )
+                        MERGE (p)-[r:REVIEWED_BY]->(a)
+                        RETURN a,r,p`,
                 { username ,intPrNo}
                 )
             );
