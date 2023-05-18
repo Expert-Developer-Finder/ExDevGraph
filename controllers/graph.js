@@ -23,9 +23,12 @@ import {
   upload_pulls,
   get_patches,
   get_reviews,
-  upload_reviews
+  upload_reviews,
+  upload_project,
+  upload_ROOT_FOFI_relation
 }from "./helpers/index.js";
 import { check_and_create_file } from "./helpers/helpers.js";
+import { log } from "console";
 
 
 dotenv.config();
@@ -52,6 +55,8 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
       }
     );
 
+
+
     // Make sure the files exists, else create the files
     const commits = `./data/${repo_owner}/${repo_name}/commits.json`;
     const rest_commits = `./data/${repo_owner}/${repo_name}/rest_commits.json`;
@@ -77,15 +82,11 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
 
     // Fetch the data
     /** If the data already has been fetched, comment for the development */
-    await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
+    // await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
     
     // Upload the data to Neo4j
-    var isCeydas = false
-      if ( repo_owner == "ceydas" && repo_name == "exdev_test") {
-        isCeydas = true
-      }
-
-    await upload_graph(commits, tree, rest_commits, patches, reviews, methods, isCeydas)
+    var full_name = `${repo_owner}/${repo_name}`;
+    await upload_graph(commits, tree, rest_commits, patches, reviews, methods, full_name)
     
     // Update the creating status of the repository
     fetch(
@@ -141,20 +142,24 @@ async function upload_graph(
   patches_path,
   reviews_path,
   methods,
-  isCeydas
+  full_name
 ) {
   // Create a Driver Instance
   let uri;
   let user;
   let password;
-  if (isCeydas) {
+  if ( full_name == "ceydas/exdev_test" ) {
     uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
     user = "neo4j"
     password = "kücük123"
   } else {
-    uri =  "neo4j+s://8c4cdf6a.databases.neo4j.io"
+    // uri =  "neo4j+s://8c4cdf6a.databases.neo4j.io"
+    // user = "neo4j"
+    // password = "büyük123"
+
+    uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
     user = "neo4j"
-    password = "büyük123"
+    password = "kücük123"
   }
   
 
@@ -181,6 +186,8 @@ async function upload_graph(
     let folders = new Set();
     let files = new Set();
     let METHODS = new Set();
+    let rootFolders = new Set();
+    let rootFiles = new Set();
    
 
     // relations
@@ -191,46 +198,121 @@ async function upload_graph(
     let COMMIT_CREATED_METHOD = new Set();
     let COMMIT_MODIFIED_METHOD = new Set();
 
+
+    /* EGE: Folder & File creation checked */
+
     // Add the folders to the folders set
     let folderData = JSON.parse(fs.readFileSync(path_tree))["tree"];
     folderData.forEach((element) => {
       if (element.type == "tree") {
         folders.add(element);
+      } else if ( element.type == "blob"){
+        files.add(element)
       }
     });
 
-    // for each folder, add the folder folder relation a
+    // for each folder, add the folder folder relation as a
     // list like as follows: [parent_folder_dir, full_folder_dir].
     // e.g. "src/views/home" => ["src/views" ,"src/views/home"]
+    // if the folder is in the root, add it to rootFolders
     folders.forEach((folder) => {
       if (folder.path.includes("/")) {
         var parentFolderPath = getFolderPath(folder.path); //for example perceval/backend returns perceval
         if (parentFolderPath != "") {
           FOLDER_FOLDER.add([parentFolderPath, folder.path]);
         }
+      } else {
+        rootFolders.add(folder)
       }
     });
 
+
+    // for each file, add the folder file relation as a
+    // list like as follows: [parent_folder_dir, full_file_dir].
+    // e.g. "src/views/a.py" => ["src/views" ,"src/views/a.py"]
+    // if the files is in the root, add it to rootFiles
+    files.forEach((file) => {
+      if (file.path.includes("/")) {
+        var parentFolderPath = getFolderPath(file.path); //for example perceval/backend.py returns perceval
+        if (parentFolderPath != "") {
+          FOLDER_FILE.add([parentFolderPath, file.path]);
+        }
+      } else {
+        rootFiles.add(file)
+      }
+    });
+
+    /* EGE: Folder & File creation checked */
+
+    /* EGE: Folder & File upload checked */
+    // await upload_project(full_name, session);
+    // await upload_files(files, session);
+    // await upload_folders(folders, session);
+
+    // await upload_ROOT_FOFI_relation(full_name, rootFiles, rootFolders, session )
+    // await upload_FOFO_relation(FOLDER_FOLDER, session);
+    // await upload_FOFI_relation( FOLDER_FILE, session)
+    /* EGE: Folder & File upload checked */
+
+
+    
+    /* We need to hold a dictionary (key: sha of a commit, value: GitHub Username of the committer)
+     * e.g.
+     *  SHA    | GitHub Username
+     * --------------------
+     * commit1 | egeergull
+     * commit2 | ceydas
+     * commit3 | egeergull
+     *
+     * We also need the email addresses of the committers. 
+     * To hold them, use another dict (key: committer name, value: email)
+     * 
+     * Name of the   |   Email of the
+     * committer     |   committer
+     * --------------------
+     * Ceyda Şahin   | cey..@mail.com
+     * Ege Ergül     | eg...@mail.com
+     * 
+     */    
+
     var commitsAndGithubUsernames = {};
+    var namesAndEmails = {}
+    var noGitHubUsername = 0;
+    var totalNo = 0;
     const restCommitsLines = fs.readFileSync(path_rest_commits, "utf-8");
     restCommitsLines.split(/\r?\n/).forEach((line) => {
       if (line.length) {
         var commit = JSON.parse(line);
+        totalNo += 1;
         try {
-          var githubUsername = commit.author.login;
-          const sha = commit["sha"];
-          commitsAndGithubUsernames[sha] = githubUsername;
-          // var item = {}
-          // item[githubUsername] = [commit.commit.author.name, commit.commit.author.email];
-          // authors.add(item);
+          var name = commit.commit.author.name;
+          var email = commit.commit.author.email;
+          if( !namesAndEmails.hasOwnProperty(name) ) {
+            namesAndEmails[name] = email;
+          } else {
+            // if the name has an email but it is a no reply one, change it
+            if( namesAndEmails[name].indexOf("noreply") != -1) {
+              namesAndEmails[name] = email;
+            }
+
+          }
+      
+          if (commit.hasOwnProperty("author") && commit.author && 
+          commit.author.hasOwnProperty("login") && commit.author.login) {
+            const githubUsername = commit.author.login;
+            const sha = commit["sha"];
+            commitsAndGithubUsernames[sha] = githubUsername;
+          } else {
+            noGitHubUsername += 1
+          }
         } catch (error) {}
       }
     });
 
+    console.log(`Number of commits with no GitHub username is ${noGitHubUsername} / ${totalNo}`);
 
     // read commits and add them to the commits set
     // also add the commit author relation to that set as well
-    // finally, add which files are in which folder
     const commitsLines = fs.readFileSync(path_commits, "utf-8");
     commitsLines.split(/\r?\n/).forEach((line) => {
       if (line.length) {
@@ -243,75 +325,54 @@ async function upload_graph(
         }
 
         const sha = commit["data"]["commit"];
+        const commitDateStr = commit["data"]["CommitDate"];
+        const dateMillis = Date.parse(commitDateStr);
 
-        const commitDate = commit["data"]["CommitDate"];
-
-        var dateArray = commitDate.split(" ");
-        const year = dateArray[4];
-        const month = dateArray[1];
-        var monthArray = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ];
-        var monthNumber = monthArray.indexOf(month);
-        monthNumber = monthNumber + 1;
-
-        commits.add([sha, year, monthNumber]);
+        commits.add([sha, dateMillis]);
 
         if (sha in commitsAndGithubUsernames) {
           authorStr = commitsAndGithubUsernames[sha];
         }
 
-        authors.add(authorStr);
-        COMMIT_AUTHOR.add([authorStr, commit["data"]["commit"]]); // sha
+        authors.add(authorStr );
+        
+        COMMIT_AUTHOR.add([authorStr, sha]); 
 
         commit["data"]["files"].forEach((file) => {
-          files.add(file["file"]);
-          COMMIT_FILE.add([commit["data"]["commit"], file["file"]]);
-
-          var folderPath = getFolderPath(file["file"]);
-          FOLDER_FILE.add([folderPath, file["file"]]);
+          COMMIT_FILE.add([sha,  file["file"]]);
         });
       }
     });
 
+    // await upload_commits(commits, session);
+    // await upload_authors(authors, namesAndEmails, session);
+
+    // await upload_COMMITTED_BY_relation(COMMIT_AUTHOR, session);
+    // await upload_ADDED_FILE_relation(COMMIT_FILE, session);
+
+
     const methodsLines = fs.readFileSync(methods, "utf-8");
-    var parsedMethodData = [];
-
-
     methodsLines.split(/\r?\n/).forEach((line) => {
       if (line.length) {
         var method = JSON.parse(line);
-        parsedMethodData.push(method)
+        var path = `${method.filePath}/${method.functionName}`;
+        METHODS.add(path);
+
+        COMMIT_CREATED_METHOD.add([method.shaCreatorCommit[0], path]);
+        method["commitShas"].forEach((commitSha) => {
+          COMMIT_MODIFIED_METHOD.add([commitSha, path]);
+        });
         
       }
     });
 
-    parsedMethodData.forEach((method) => {
-      METHODS.add([
-        method.key,
-        method.filePath,
-        method.className,
-        method.functionName,
-        method.startLineFun.toString(),
-        method.endLineFun.toString(),
-      ]);
-      COMMIT_CREATED_METHOD.add([method.shaCreatorCommit[0], method.key]);
-      method["commitShas"].forEach((commitSha) => {
-        COMMIT_MODIFIED_METHOD.add([commitSha, method.key]);
-      });
-    });
 
+    // await upload_methods(METHODS, session);
+
+    await upload_COMMIT_CREATED_METHOD_relation(COMMIT_CREATED_METHOD, COMMIT_AUTHOR, session);
+    await upload_COMMIT_MODIFIED_METHOD_relation(COMMIT_MODIFIED_METHOD,COMMIT_AUTHOR, session);
+    return;
+  
 
     console.log("No of authors: " + authors.size);
     console.log("No of commits: " + commits.size);
@@ -321,18 +382,10 @@ async function upload_graph(
     console.log("No of COMMIT_FILE: " + FOLDER_FILE.size);
     console.log("No of FOLDER_FOLDER: " + FOLDER_FOLDER.size);
 
-    await upload_authors(authors, session);
-    await upload_commits(commits, session);
-    await upload_files(files, session);
-    await upload_folders(folders, session);
-    await upload_methods(METHODS, commits, session);
+  
 
-    await upload_FOFO_relation(FOLDER_FOLDER, session);
-    await upload_FOFI_relation( FOLDER_FILE, session)
-    await upload_COMMITTED_BY_relation(COMMIT_AUTHOR, session);
-    await upload_ADDED_FILE_relation(COMMIT_FILE, session);
-    await upload_COMMIT_CREATED_METHOD_relation(COMMIT_CREATED_METHOD, COMMIT_AUTHOR, session);
-    await upload_COMMIT_MODIFIED_METHOD_relation(COMMIT_MODIFIED_METHOD,COMMIT_AUTHOR, session);
+   
+   
     //Be careful! This the below functions need to be called after the creation of authors and commits
     await upload_pulls(patches_path, session);
     await upload_reviews(reviews_path, session);

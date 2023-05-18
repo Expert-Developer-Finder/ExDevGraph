@@ -19,7 +19,8 @@ import { upload_pulls } from "./upload_graph/upload_pulls.js";
 import { get_patches } from "./fetch_data/get_patches.js";
 import { get_reviews } from "./fetch_data/get_reviews.js"; 
 import { upload_reviews } from "./upload_graph/upload_reviews.js";
-
+import { upload_project } from "./upload_graph/upload_project.js";
+import { upload_ROOT_FOFI_relation } from "./upload_graph/upload_ROOT_FOFI_relation.js";
 export {
   get_commits,
   get_issues_and_prs,
@@ -41,5 +42,7 @@ export {
   upload_pulls,
   get_patches,
   get_reviews,
-  upload_reviews
+  upload_reviews,
+  upload_project,
+  upload_ROOT_FOFI_relation
 };

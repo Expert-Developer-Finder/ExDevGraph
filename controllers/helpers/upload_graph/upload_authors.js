@@ -1,13 +1,16 @@
-const upload_authors = async (authors, session)=> {
+const upload_authors = async (authors, namesAndEmails , session)=> {
     var loading = 0;
     for (const author of authors) {
       var authorLogin = author;
+      let email = "";
+      if (namesAndEmails.hasOwnProperty(authorLogin))
+        email = namesAndEmails[authorLogin];
       const res = await session.executeWrite((tx) =>
         tx.run(
-          `CREATE (u:Author {authorLogin: $authorLogin})
+          `CREATE (u:Author {authorLogin: $authorLogin, email: $email})
            RETURN u
           `,
-          { authorLogin }
+          { authorLogin, email }
         )
       );
       loading++;

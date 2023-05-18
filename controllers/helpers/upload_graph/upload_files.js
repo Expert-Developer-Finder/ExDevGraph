@@ -1,15 +1,16 @@
 const upload_files = async (files, session) => {
     var loading = 0;
     for (const file of files) {
+        let filePath = file.path;
         const res = await session.executeWrite((tx) =>
           tx.run(
             `
               CREATE (c:File {
-                path: $file
+                path: $filePath
               })
               RETURN c
             `,
-            { file }
+            { filePath }
           )
         );
         loading++;

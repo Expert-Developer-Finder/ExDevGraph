@@ -3,18 +3,14 @@ const upload_COMMITTED_BY_relation = async(COMMIT_AUTHOR, session)=> {
     for (const commitData of COMMIT_AUTHOR) {
       let authorD = commitData[0];
       let commitD = commitData[1];
-      let weight = 1;
       const res = await session.executeWrite((tx) =>
         tx.run(
           `
             MATCH (u:Author {authorLogin: $authorD})
             MATCH (m:Commit {hash: $commitD})
-
-            MERGE (m)-[r:COMMITED_BY]->(u)
-            SET r.weight = $weight,
-                r.timestamp = timestamp()
+            MERGE (m)-[r:COMMITTED_BY]->(u)
           `,
-          { authorD, commitD, weight }
+          { authorD, commitD }
         )
       );
       loading++;
@@ -26,7 +22,7 @@ const upload_COMMITTED_BY_relation = async(COMMIT_AUTHOR, session)=> {
         );
       }
     }
-    console.log("COMMITED_BY relation Done");
+    console.log("COMMITTED_BY relation Done");
 
 }
 
