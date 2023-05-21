@@ -1,5 +1,5 @@
 import neo4j, { Node, Relationship, Integer, auth } from 'neo4j-driver';
-import {  get_file_commit_author_recency, get_file_pr_author_recency, get_file_review_author_recency, get_folder_commit_author_recency, get_folder_pr_author_recency, get_folder_review_author_recency } from './helpers/index.js';
+import {  get_file_commit_author_recency, get_file_pr_author_recency, get_file_review_author_recency, get_folder_commit_author_recency, get_folder_pr_author_recency, get_folder_review_author_recency, get_method_commit_author_recency, get_method_pr_author_recency, get_method_review_author_recency } from './helpers/index.js';
 
 const getNeo4jCredentials = async (repoId)  => {
     const data = await fetch(`${process.env.SERVER_BASE_URL}/repos/name/${repoId}`);
@@ -9,9 +9,13 @@ const getNeo4jCredentials = async (repoId)  => {
     let user;
     let password;
     if ( repoFullName.owner == "ceydas" && repoFullName.name == "exdev_test") {
-        uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
+        // uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
+        // user = "neo4j"
+        // password = "kücük123"
+
+        uri = "neo4j+s://8117a2ff.databases.neo4j.io:7687"
         user = "neo4j"
-        password = "kücük123"
+        password = "gwLRO3knpyBg60EYlofS0hxjXF2Pd7H8bsvKv9QZ5Mk"
     } else {
         uri =  "neo4j+s://8c4cdf6a.databases.neo4j.io"
         user = "neo4j"
@@ -80,48 +84,31 @@ export const getRecommendations = async (req, response) => {
 
             await get_folder_review_author_recency(expertsAndScores, path, session, githubRepoCreatedAt);
             console.log("AFTER THE REVIEW ERA: ");
-            console.log(expertsAndScores);
-        
-           
+            console.log(expertsAndScores);    
 
         } else if (source == "method") {
             var index_of_open_bracket = methodSignature.indexOf("(") 
             var trimmedSignature = methodSignature.slice(4, index_of_open_bracket);
 
-            // Method için gereken query buraya gelecek TODO
-            res = await session.readTransaction(txc =>
-                txc.run(
-                `WITH $path as fPath, $trimmedSignature as fName
-                MATCH (Method{filePath: fPath, functionName: fName})
-                MATCH (author:Author)<-[:COMMITED_BY]-(:Commit)-[commitMod:COMMIT_MODIFIED_METHOD]->(Method)
-                WITH Method, author, COUNT(commitMod) as modificationCount
-                OPTIONAL MATCH (authorAlso:Author)<-[:COMMITED_BY]-(:Commit)-[commitCreated:COMMIT_CREATED_METHOD]->(Method)
-                WHERE authorAlso = author
-                WITH  2 as creatingWeight, 1 as modifyWeight, Method, author, modificationCount, authorAlso ,COUNT(commitCreated) as creatorCount
-                RETURN author.authorLogin as authorName, Method.functionName as methodName,(CASE WHEN creatorCount > 0 THEN creatingWeight ELSE 0 END) as creatorCount ,modificationCount * modifyWeight as MethodModifyScore, modificationCount * modifyWeight + (CASE WHEN creatorCount > 0 THEN creatingWeight ELSE 0 END) as MethodKnowAboutScore ORDER BY MethodKnowAboutScore DESC LIMIT 3
-                `,
-                { path, trimmedSignature}
-                )
-            );
-        
-            res.records.forEach((r)=> {
-                expertsAndScores.push({
-                    "authorName": r._fields[0],
-                    "creatorCount": r._fields[2].low,
-                    "methodModifyScore": r._fields[3].low,
-                    "methodKnowAboutScore":  typeof( r._fields[4]) == "object"  ? r._fields[4].low: r._fields[4] ,
-                    "totalScore" :  typeof( r._fields[4]) == "object"  ? r._fields[4].low: r._fields[4] ,
-                })
-            });
+            await get_method_commit_author_recency(expertsAndScores, path, trimmedSignature, session, githubRepoCreatedAt);
+            console.log("AFTER THE COMMIT ERA: ");
+            console.log(expertsAndScores);
 
+            await get_method_pr_author_recency(expertsAndScores, path, trimmedSignature, session, githubRepoCreatedAt);
+            console.log("AFTER THE PR ERA: ");
+            console.log(expertsAndScores);
+
+            await get_method_review_author_recency(expertsAndScores, path,trimmedSignature, session, githubRepoCreatedAt);
+            console.log("AFTER THE REVIEW ERA: ");
+            console.log(expertsAndScores);    
+        
+        
         }
 
 
         // Calculate the total Scores
         for (var i = 0; i < expertsAndScores.length; i++) {
-            if ( source == "method") {
-                expertsAndScores[i].totalScore =  expertsAndScores[i].methodKnowAboutScore
-            } else {
+            
                 var item = expertsAndScores[i];
 
                 // When weight recency is 1, only return the recentScore
@@ -134,7 +121,7 @@ export const getRecommendations = async (req, response) => {
                 expertsAndScores[i].ultimatePRScore = ultimatePRScore
                 expertsAndScores[i].ultimateReviewScore = ultimateReviewScore
                 expertsAndScores[i].totalScore = totalScore
-            }
+            
         }
 
         console.log(`FINALLY, weight recency: ${weightRecency}, weight Commits: ${weightCommit}, weight PRs: ${weightPR} and max experts to be returned: ${maxDevToBeReturned}`);

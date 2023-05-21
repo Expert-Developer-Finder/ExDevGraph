@@ -82,7 +82,7 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
 
     // Fetch the data
     /** If the data already has been fetched, comment for the development */
-    await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
+   await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
     
     // Upload the data to Neo4j
     var full_name = `${repo_owner}/${repo_name}`;
@@ -149,9 +149,13 @@ async function upload_graph(
   let user;
   let password;
   if ( full_name == "ceydas/exdev_test" ) {
-    uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
+    // uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
+    // user = "neo4j"
+    // password = "kücük123"
+
+    uri = "neo4j+s://8117a2ff.databases.neo4j.io:7687"
     user = "neo4j"
-    password = "kücük123"
+    password = "gwLRO3knpyBg60EYlofS0hxjXF2Pd7H8bsvKv9QZ5Mk"
   } else {
     uri =  "neo4j+s://8c4cdf6a.databases.neo4j.io"
     user = "neo4j"

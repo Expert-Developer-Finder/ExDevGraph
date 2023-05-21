@@ -27,7 +27,9 @@ import { get_file_review_author_recency } from "./queries/get_file_review_author
 import { get_folder_commit_author_recency } from "./queries/get_folder_commit_author_recency.js";
 import { get_folder_pr_author_recency } from "./queries/get_folder_pr_author_recency.js";
 import { get_folder_review_author_recency } from "./queries/get_folder_review_author_recency.js";
-
+import { get_method_commit_author_recency } from "./queries/get_method_commit_author_recency.js";
+import { get_method_pr_author_recency } from "./queries/get_method_pr_author_recency.js";
+import { get_method_review_author_recency } from "./queries/get_method_review_author_recency.js";
 
 export {
   get_commits,
@@ -58,5 +60,8 @@ export {
   get_file_review_author_recency,
   get_folder_commit_author_recency,
   get_folder_pr_author_recency,
-  get_folder_review_author_recency
+  get_folder_review_author_recency,
+  get_method_commit_author_recency,
+  get_method_pr_author_recency,
+  get_method_review_author_recency
 };

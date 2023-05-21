@@ -10,7 +10,7 @@ const get_file_commit_author_recency = async (expertsAndScores, path, session, g
        `
         WITH $path as filePath
         MATCH(f:File{path: filePath})<-[af:ADDED_FILE]-(c:Commit)-[cb:COMMITTED_BY]->(a:Author)
-        WITH f, c, a, (1- ( $startDate- c.millis) / ($startDate - $todayDate )) AS recency
+        WITH f, c, a, (1- ( $todayDate- c.millis) / ($todayDate - $startDate )) AS recency
         RETURN a.authorLogin AS AuthorName,  count(recency) as commitCount, sum(recency) AS recencyScore, a.email as email`,
         { path , startDate, todayDate}
         )
