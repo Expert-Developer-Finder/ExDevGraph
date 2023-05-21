@@ -82,7 +82,7 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
 
     // Fetch the data
     /** If the data already has been fetched, comment for the development */
-    // await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
+    await fetch_data(repo_owner, repo_name, methods, commits,rest_commits,issues,pulls,tree,patches,log,reviews, tokens, branch);
     
     // Upload the data to Neo4j
     var full_name = `${repo_owner}/${repo_name}`;
@@ -153,13 +153,9 @@ async function upload_graph(
     user = "neo4j"
     password = "kücük123"
   } else {
-    // uri =  "neo4j+s://8c4cdf6a.databases.neo4j.io"
-    // user = "neo4j"
-    // password = "büyük123"
-
-    uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
+    uri =  "neo4j+s://8c4cdf6a.databases.neo4j.io"
     user = "neo4j"
-    password = "kücük123"
+    password = "büyük123"
   }
   
 
@@ -245,13 +241,13 @@ async function upload_graph(
     /* EGE: Folder & File creation checked */
 
     /* EGE: Folder & File upload checked */
-    // await upload_project(full_name, session);
-    // await upload_files(files, session);
-    // await upload_folders(folders, session);
+    await upload_project(full_name, session);
+    await upload_files(files, session);
+    await upload_folders(folders, session);
 
-    // await upload_ROOT_FOFI_relation(full_name, rootFiles, rootFolders, session )
-    // await upload_FOFO_relation(FOLDER_FOLDER, session);
-    // await upload_FOFI_relation( FOLDER_FILE, session)
+    await upload_ROOT_FOFI_relation(full_name, rootFiles, rootFolders, session )
+    await upload_FOFO_relation(FOLDER_FOLDER, session);
+    await upload_FOFI_relation( FOLDER_FILE, session)
     /* EGE: Folder & File upload checked */
 
 
@@ -344,11 +340,11 @@ async function upload_graph(
       }
     });
 
-    // await upload_commits(commits, session);
-    // await upload_authors(authors, namesAndEmails, session);
+    await upload_commits(commits, session);
+    await upload_authors(authors, namesAndEmails, session);
 
-    // await upload_COMMITTED_BY_relation(COMMIT_AUTHOR, session);
-    // await upload_ADDED_FILE_relation(COMMIT_FILE, session);
+    await upload_COMMITTED_BY_relation(COMMIT_AUTHOR, session);
+    await upload_ADDED_FILE_relation(COMMIT_FILE, session);
 
 
     const methodsLines = fs.readFileSync(methods, "utf-8");
@@ -367,10 +363,10 @@ async function upload_graph(
     });
 
 
-    // await upload_methods(METHODS, session);
+    await upload_methods(METHODS, session);
 
-    // await upload_COMMIT_CREATED_METHOD_relation(COMMIT_CREATED_METHOD, COMMIT_AUTHOR, session);
-    // await upload_COMMIT_MODIFIED_METHOD_relation(COMMIT_MODIFIED_METHOD,COMMIT_AUTHOR, session);
+    await upload_COMMIT_CREATED_METHOD_relation(COMMIT_CREATED_METHOD, COMMIT_AUTHOR, session);
+    await upload_COMMIT_MODIFIED_METHOD_relation(COMMIT_MODIFIED_METHOD,COMMIT_AUTHOR, session);
 
   
 
@@ -384,7 +380,7 @@ async function upload_graph(
 
      
     //Be careful! This the below functions need to be called after the creation of authors and commits
-    // await upload_pulls(patches_path, session);
+    await upload_pulls(patches_path, session);
     await upload_reviews(reviews_path, session);
 
 

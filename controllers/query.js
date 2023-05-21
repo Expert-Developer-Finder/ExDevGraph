@@ -1,14 +1,14 @@
 import neo4j, { Node, Relationship, Integer, auth } from 'neo4j-driver';
+import { get_file_commit_author, get_file_commit_author_recency, get_file_pr_author_recency, get_file_review_author_recency } from './helpers/index.js';
 
 const getNeo4jCredentials = async (repoId)  => {
     const data = await fetch(`${process.env.SERVER_BASE_URL}/repos/name/${repoId}`);
     const repoFullName = await data.json();
-    var isCeydas = ( repoFullName.owner == "ceydas" && repoFullName.name == "exdev_test")
 
     let uri;
     let user;
     let password;
-    if (isCeydas) {
+    if ( repoFullName.owner == "ceydas" && repoFullName.name == "exdev_test") {
         uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
         user = "neo4j"
         password = "kücük123"
@@ -18,11 +18,12 @@ const getNeo4jCredentials = async (repoId)  => {
         password = "büyük123"
     }
 
+
     return [uri, user, password]
 }
 
 export const getRecommendations = async (req, response) => {
-    var { source, path, repoId, methodSignature} = req.body;
+    var { source, path, repoId, methodSignature, githubRepoCreatedAt} = req.body;
 
     if(path[0] == "/") {
         path = path.substring(1);
@@ -48,61 +49,20 @@ export const getRecommendations = async (req, response) => {
 
         if (source == "file") {
             // Get the commits and recency
-            var res = await session.readTransaction(txc =>
-                txc.run(
-               `
-                WITH 
-                $year as currentYear,
-                $month as currentMonth,
-                $path as filePath 
-                MATCH(f:File{path:filePath})<-[mf:ADDED_FILE]-(n:Commit)-[cb:COMMITED_BY]->(a:Author)
-                RETURN  a.authorLogin as AuthorName,count(cb) as CommitCount,
-                SUM(CASE 
-                  WHEN n.year = currentYear AND currentMonth-n.month=0  THEN 2
-                  WHEN n.year = currentYear AND currentMonth-n.month=1 THEN 1.75
-                  WHEN n.year = currentYear AND currentMonth-n.month=2 THEN 1.5
-                    WHEN n.year = currentYear AND currentMonth-n.month=3 THEN 1.25
-                  ELSE 1
-                END) AS TotalRecencyScore ORDER BY TotalRecencyScore DESC`,
-                { path , year, month}
-                )
-            );
+            await get_file_commit_author_recency(expertsAndScores, path, session, githubRepoCreatedAt);
+            console.log("AFTER THE COMMIT ERA: ");
+            console.log(expertsAndScores);
 
-            res.records.forEach((r)=> {
-                var commitCount =  r._fields[1].low;
-                var recentCommitScore = typeof( r._fields[2]) == "object"  ? r._fields[2].low: r._fields[2] ;
-                expertsAndScores.push({
-                    "authorName": r._fields[0],
-                    "commitCount":commitCount,
-                    "recentCommitScore": recentCommitScore,
-                    "commitScore": (0.5 * commitCount + 0.5 * recentCommitScore),
-                    "prKnowAboutScore": 0,
-                    "totalScore" : 0,
-                    "reviewKnowAboutScore": 0
-                })
-            });
+            await get_file_pr_author_recency(expertsAndScores, path, session, githubRepoCreatedAt);
+            console.log("AFTER THE PR ERA: ");
+            console.log(expertsAndScores);
 
-            // Get the prs
-            res = await session.readTransaction(txc =>
-                txc.run(
-                `
-                WITH 
-                $path as filePath 
-                MATCH(p:Pull)<-[cip:CONTAINED_IN_PR]-(c:Commit)-[af:ADDED_FILE]->(f:File{path:filePath}) 
-                WITH DISTINCT p.prNumber as prNum
-                MATCH (a:Author)<-[spb:SUBMITED_PR_BY]-(p:Pull{prNumber: prNum})
-                RETURN a.authorLogin as AuthorLogin, count(spb) as authorPullScore`,
-                { path}
-                )
-            );
 
-            var temp = [];
-            res.records.forEach((r)=> {
-                temp.push({
-                    "authorName": r._fields[0],
-                    "prKnowAboutScore": typeof( r._fields[1]) == "object"  ? r._fields[1].low: r._fields[1] 
-                })
-            });
+            await get_file_review_author_recency(expertsAndScores, path, session, githubRepoCreatedAt);
+            console.log("AFTER THE REVIEW ERA: ");
+            console.log(expertsAndScores);
+
+           
 
             // review know about score
             res = await session.readTransaction(txc =>
@@ -296,7 +256,7 @@ export const getRecommendations = async (req, response) => {
 
         // Sort by totalScore
         expertsAndScores.sort((a, b) => b.totalScore - a.totalScore);
-        console.log(expertsAndScores);
+        //console.log(expertsAndScores);
 
         // SORULAR, şu anda n tane öneri varsa n tane adam dönüyo mu
         // şu pr da birden fazla aynı kişiyi farklı pr ile dönüyo mu
