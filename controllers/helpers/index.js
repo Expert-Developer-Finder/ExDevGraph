@@ -24,6 +24,10 @@ import { upload_ROOT_FOFI_relation } from "./upload_graph/upload_ROOT_FOFI_relat
 import { get_file_commit_author_recency } from "./queries/get_file_commit_author_recency.js";
 import { get_file_pr_author_recency } from "./queries/get_file_pr_author_recency.js";
 import { get_file_review_author_recency } from "./queries/get_file_review_author_recency.js";
+import { get_folder_commit_author_recency } from "./queries/get_folder_commit_author_recency.js";
+import { get_folder_pr_author_recency } from "./queries/get_folder_pr_author_recency.js";
+import { get_folder_review_author_recency } from "./queries/get_folder_review_author_recency.js";
+
 
 export {
   get_commits,
@@ -51,5 +55,8 @@ export {
   upload_ROOT_FOFI_relation,
   get_file_commit_author_recency,
   get_file_pr_author_recency,
-  get_file_review_author_recency
+  get_file_review_author_recency,
+  get_folder_commit_author_recency,
+  get_folder_pr_author_recency,
+  get_folder_review_author_recency
 };

@@ -1,16 +1,21 @@
 const get_file_review_author_recency = async (expertsAndScores, path, session, githubRepoCreatedAt) => {
-    var startDate =  Date.parse(githubRepoCreatedAt)
-    var todayDate =  Date.now()
+    var startDateStr =  Date.parse(githubRepoCreatedAt)
+    var todayDateStr =  Date.now()
+
+    var startDate = parseInt(startDateStr);
+    var todayDate = parseInt(todayDateStr);
+
+
 
     var res = await session.readTransaction(txc =>
         txc.run(
 
        `
-        WITH $path as filePath, $startDate as startDate, $todayDate as todayDate
+        WITH $path as filePath
         MATCH(p:Pull)<-[cip:CONTAINED_IN_PR]-(c:Commit)-[af:ADDED_FILE]->(f:File{path:filePath}) 
         WITH DISTINCT p.prNumber as prNum
         MATCH (a:Author)<-[spb:REVIEWED_BY]-(p:Pull{prNumber: prNum})
-        WITH a,spb,p ,(1- (1684414039065 - p.prDate) / (1684414039065 -1679878066000 )) AS recency
+        WITH a,spb,p ,(1- ($todayDate - p.prDate) / ($todayDate - $startDate )) AS recency
         RETURN a.authorLogin as AuthorLogin, count(spb) as authorPullCount, sum(recency) as authorPullRecencyScore, a.email as email`,
         { path , startDate, todayDate}
         )

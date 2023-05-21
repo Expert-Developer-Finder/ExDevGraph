@@ -1,5 +1,5 @@
 import neo4j, { Node, Relationship, Integer, auth } from 'neo4j-driver';
-import {  get_file_commit_author_recency, get_file_pr_author_recency, get_file_review_author_recency } from './helpers/index.js';
+import {  get_file_commit_author_recency, get_file_pr_author_recency, get_file_review_author_recency, get_folder_commit_author_recency, get_folder_pr_author_recency, get_folder_review_author_recency } from './helpers/index.js';
 
 const getNeo4jCredentials = async (repoId)  => {
     const data = await fetch(`${process.env.SERVER_BASE_URL}/repos/name/${repoId}`);
@@ -70,103 +70,19 @@ export const getRecommendations = async (req, response) => {
             // console.log(expertsAndScores);
     
         } else if (source == "folder") { // source is folder
-            // Get the commits and recency
+            await get_folder_commit_author_recency(expertsAndScores, path, session, githubRepoCreatedAt);
+            console.log("AFTER THE COMMIT ERA: ");
+            console.log(expertsAndScores);
 
-             var res = await session.readTransaction(txc =>
-                txc.run(
-                `WITH $path AS folderPath,
-                $year as currentYear,
-                $month as currentMonth
-                MATCH (fo:Folder {path: folderPath})<-[ifofo:INSIDE_FOFO*0..]-(foChild:Folder)<-[ifofi:INSIDE_FOFI]-(f:File)<-[af:ADDED_FILE]-(n:Commit)-[cb:COMMITED_BY]->(a:Author)
-                RETURN a.authorLogin AS AuthorName, COUNT(*) AS CommitCount, SUM(CASE 
-                  WHEN n.year = currentYear AND currentMonth-n.month=0  THEN 2
-                  WHEN n.year = currentYear AND currentMonth-n.month=1 THEN 1.75
-                  WHEN n.year = currentYear AND currentMonth-n.month=2 THEN 1.5
-                    WHEN n.year = currentYear AND currentMonth-n.month=3 THEN 1.25
-                  ELSE 1
-                END) AS TotalScore ORDER BY TotalScore DESC LIMIT 10
-                `,
-                { path , year, month}
-                )
-            );
+            await get_folder_pr_author_recency(expertsAndScores, path, session, githubRepoCreatedAt);
+            console.log("AFTER THE PR ERA: ");
+            console.log(expertsAndScores);
 
-            res.records.forEach((r)=> {
-                expertsAndScores.push({
-                    "authorName": r._fields[0],
-                    "commitCount": r._fields[1].low,
-                    "recentCommitScore": typeof( r._fields[2]) == "object"  ? r._fields[2].low: r._fields[2] ,
-                    "prKnowAboutScore": 0,
-                    "reviewKnowAboutScore": 0,
-                    "totalScore" : 0
-                })
-            });
+            await get_folder_review_author_recency(expertsAndScores, path, session, githubRepoCreatedAt);
+            console.log("AFTER THE REVIEW ERA: ");
+            console.log(expertsAndScores);
         
-            // Get the prs
-            // res = await session.readTransaction(txc =>
-            //     txc.run(
-            //     `With
-            //     $path as filePath 
-            //     match(a:Author)<-[spb:SUBMITED_PR_BY]-(p:Pull)<-[cip:CONTAINED_IN_PR]-
-            //     (c:Commit)-[af:ADDED_FILE]->(f:File{path:filePath})
-            //     return a.authorLogin as AuthorLogin ,p.prNumber as PrNumber,count(cip) as PRknowAboutScore,f.path as FilePath
-            //     `,
-            //     { path}
-            //     )
-            // );
-
-            var temp = [];
-            // res.records.forEach((r)=> {
-            //     temp.push({
-            //         "authorName": r._fields[0],
-            //         "prNo": r._fields[1],
-            //         "prKnowAboutScore": typeof( r._fields[2]) == "object"  ? r._fields[2].low: r._fields[2] 
-            //     })
-            // });
-
-            res = await session.readTransaction(txc =>
-                txc.run(
-                `
-                with $path as folderPath
-                match(a:Author)<-[rb:REVIEWED_BY]-(p:Pull)<-[cip:CONTAINED_IN_PR]-(c:Commit)-[af:ADDED_FILE]->(f:File)-[ifofi:INSIDE_FOFI]->(foChild:Folder)-[ifofo:INSIDE_FOFO*0..]->(fo:Folder{path:folderPath}) return a.authorLogin as AuthorLogin, count(*) as ReviewKnowAboutScore
-                `,
-                { path}
-                )
-            );
-
-            res.records.forEach((r)=> {
-                for ( var i = 0; i < expertsAndScores.length; i++) {
-                    var item = expertsAndScores[i]; 
-                    if (item.authorName ==  r._fields[0]){
-                        item.reviewKnowAboutScore = typeof( r._fields[1]) == "object"  ? r._fields[1].low: r._fields[1] 
-                        added = true
-                    } 
-                }
-
-            });
-
-            for (var j = 0; j< temp.length; j++) {
-                var outerItem = temp[j];
-                var added = false;
-                for ( var i = 0; i < expertsAndScores.length; i++) {
-                    var item = expertsAndScores[i]; 
-                    if (item.authorName == outerItem.authorName){
-                        item.prKnowAboutScore = item.prKnowAboutScore + outerItem.prKnowAboutScore
-                        added = true
-                    } 
-                }
-                if (added == false) {
-                    expertsAndScores.push({
-                        "authorName": outerItem.authorName,
-                        "commitCount": 0, 
-                        "recentCommitScore": 0,
-                        "prKnowAboutScore": outerItem.prKnowAboutScore,
-                        "reviewKnowAboutScore": 0,
-                        "totalScore" : 0
-
-                    })
-                }
-
-            }
+           
 
         } else if (source == "method") {
             var index_of_open_bracket = methodSignature.indexOf("(") 
