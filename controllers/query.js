@@ -23,11 +23,17 @@ const getNeo4jCredentials = async (repoId)  => {
 }
 
 export const getRecommendations = async (req, response) => {
-    var { source, path, repoId, methodSignature, githubRepoCreatedAt} = req.body;
+    var { source, path, repoId, methodSignature, repo} = req.body;
 
     if(path[0] == "/") {
         path = path.substring(1);
     }
+
+    var githubRepoCreatedAt = repo.githubRepoCreatedAt;
+    var weightCommit = repo.weightCommit;
+    var weightPR = repo.weightPR
+    var weightRecency = repo.weightRecency;
+    var maxDevToBeReturned = repo.devNo
 
     console.log(`A new query arrived. Query type is ${source}`);
     
@@ -38,6 +44,8 @@ export const getRecommendations = async (req, response) => {
         let user = credentials[1];
         let password = credentials[2];
 
+
+        
         const driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
         const session = driver.session();
         
@@ -50,68 +58,17 @@ export const getRecommendations = async (req, response) => {
         if (source == "file") {
             // Get the commits and recency
             await get_file_commit_author_recency(expertsAndScores, path, session, githubRepoCreatedAt);
-            console.log("AFTER THE COMMIT ERA: ");
-            console.log(expertsAndScores);
+            // console.log("AFTER THE COMMIT ERA: ");
+            // console.log(expertsAndScores);
 
             await get_file_pr_author_recency(expertsAndScores, path, session, githubRepoCreatedAt);
-            console.log("AFTER THE PR ERA: ");
-            console.log(expertsAndScores);
-
+            // console.log("AFTER THE PR ERA: ");
+            // console.log(expertsAndScores);
 
             await get_file_review_author_recency(expertsAndScores, path, session, githubRepoCreatedAt);
-            console.log("AFTER THE REVIEW ERA: ");
-            console.log(expertsAndScores);
-
-           
-
-            // review know about score
-            res = await session.readTransaction(txc =>
-                txc.run(
-                `
-                with $path as filePath
-                match(a:Author)<-[rb:REVIEWED_BY]-(p:Pull)<-[cip:CONTAINED_IN_PR]-(c:Commit)-[af:ADDED_FILE]->(f:File{path:filePath}) 
-                return a.authorLogin as AuthorLogin, count(*) as ReviewKnowAboutScore
-                `,
-                { path}
-                )
-            );
-
-            res.records.forEach((r)=> {
-                for ( var i = 0; i < expertsAndScores.length; i++) {
-                    var item = expertsAndScores[i]; 
-                    if (item.authorName ==  r._fields[0]){
-                        item.reviewKnowAboutScore = typeof( r._fields[1]) == "object"  ? r._fields[1].low: r._fields[1] 
-                        added = true
-                    } 
-                }
-
-            });
-
-            for (var j = 0; j< temp.length; j++) {
-                var outerItem = temp[j];
-                var added = false;
-                for ( var i = 0; i < expertsAndScores.length; i++) {
-                    var item = expertsAndScores[i]; 
-                    if (item.authorName == outerItem.authorName){
-                        item.prKnowAboutScore = item.prKnowAboutScore + outerItem.prKnowAboutScore
-                        added = true
-                    } 
-                }
-                if (added == false) {
-                    expertsAndScores.push({
-                        "authorName": outerItem.authorName,
-                        "commitCount": 0, 
-                        "recentCommitScore": 0,
-                        "commitScore": 0,
-                        "prKnowAboutScore": outerItem.prKnowAboutScore,
-                        "reviewKnowAboutScore": 0,
-                        "totalScore" : 0
-
-                    })
-                }
-
-            }
-               
+            // console.log("AFTER THE REVIEW ERA: ");
+            // console.log(expertsAndScores);
+    
         } else if (source == "folder") { // source is folder
             // Get the commits and recency
 
@@ -250,17 +207,33 @@ export const getRecommendations = async (req, response) => {
                 expertsAndScores[i].totalScore =  expertsAndScores[i].methodKnowAboutScore
             } else {
                 var item = expertsAndScores[i];
-                expertsAndScores[i].totalScore =  (0.5 * expertsAndScores[i].commitCount) + (0.5 * expertsAndScores[i].recentCommitScore) + expertsAndScores[i].prKnowAboutScore + expertsAndScores[i].reviewKnowAboutScore
+
+                // When weight recency is 1, only return the recentScore
+                var ultimateCommitScore = ((1- weightRecency) * item.commitCount) + (weightRecency * item.commitRecencyScore)
+                var ultimatePRScore = ((1- weightRecency) * item.prCount) + (weightRecency * item.prRecencyScore)
+                var ultimateReviewScore = ((1- weightRecency) * item.reviewCount) + (weightRecency * item.reviewRecencyScore)
+                var totalScore = (weightCommit * ultimateCommitScore) + (weightPR * (ultimatePRScore + ultimateReviewScore ))
+                
+                expertsAndScores[i].ultimateCommitScore = ultimateCommitScore
+                expertsAndScores[i].ultimatePRScore = ultimatePRScore
+                expertsAndScores[i].ultimateReviewScore = ultimateReviewScore
+                expertsAndScores[i].totalScore = totalScore
             }
         }
 
+        console.log(`FINALLY, weight recency: ${weightRecency}, weight Commits: ${weightCommit}, weight PRs: ${weightPR} and max experts to be returned: ${maxDevToBeReturned}`);
+        console.log(expertsAndScores);
+
         // Sort by totalScore
         expertsAndScores.sort((a, b) => b.totalScore - a.totalScore);
-        //console.log(expertsAndScores);
+        console.log("After sorted");
+        console.log(expertsAndScores);
 
-        // SORULAR, şu anda n tane öneri varsa n tane adam dönüyo mu
-        // şu pr da birden fazla aynı kişiyi farklı pr ile dönüyo mu
-        // commit de aynı adam max bir kere gelcek di mi
+        if (expertsAndScores.length > maxDevToBeReturned) {
+            expertsAndScores = expertsAndScores.slice(0,maxDevToBeReturned)
+        }
+        console.log("RESPONSE IS: ");
+        console.log(expertsAndScores);
 
         console.log("Query response has been returned");
         return response.status(200).json(expertsAndScores);
