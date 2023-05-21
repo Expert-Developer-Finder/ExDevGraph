@@ -21,7 +21,6 @@ import { get_reviews } from "./fetch_data/get_reviews.js";
 import { upload_reviews } from "./upload_graph/upload_reviews.js";
 import { upload_project } from "./upload_graph/upload_project.js";
 import { upload_ROOT_FOFI_relation } from "./upload_graph/upload_ROOT_FOFI_relation.js";
-import { get_file_commit_author } from "./queries/get_file_commit_author.js";
 import { get_file_commit_author_recency } from "./queries/get_file_commit_author_recency.js";
 import { get_file_pr_author_recency } from "./queries/get_file_pr_author_recency.js";
 import { get_file_review_author_recency } from "./queries/get_file_review_author_recency.js";
@@ -50,7 +49,6 @@ export {
   upload_reviews,
   upload_project,
   upload_ROOT_FOFI_relation,
-  get_file_commit_author,
   get_file_commit_author_recency,
   get_file_pr_author_recency,
   get_file_review_author_recency

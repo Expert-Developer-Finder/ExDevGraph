@@ -11,7 +11,7 @@ const get_file_pr_author_recency = async (expertsAndScores, path, session, githu
         WITH DISTINCT p.prNumber as prNum
         MATCH (a:Author)<-[spb:SUBMITTED_PR_BY]-(p:Pull{prNumber: prNum})
         WITH a,spb,p ,(1- (1684414039065 - p.prDate) / (1684414039065 -1679878066000 )) AS recency
-        RETURN a.authorLogin as AuthorLogin, count(spb) as authorPullCount, sum(recency) as authorPullRecencyScore`,
+        RETURN a.authorLogin as AuthorLogin, count(spb) as authorPullCount, sum(recency) as authorPullRecencyScore, a.email as email`,
         { path , startDate, todayDate}
         )
     );
@@ -35,6 +35,7 @@ const get_file_pr_author_recency = async (expertsAndScores, path, session, githu
         } else {
             expertsAndScores.push({
                 "authorName": r._fields[0],
+                "email": r._fields[3],
                 "commitCount": 0,
                 "commitRecencyScore":0,
                 "prCount": pullCount,
