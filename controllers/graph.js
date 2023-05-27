@@ -86,7 +86,7 @@ export const createGraph = async (repo_owner, repo_name, tokens, branch) => {
     
     // Upload the data to Neo4j
     var full_name = `${repo_owner}/${repo_name}`;
-    await upload_graph(commits, tree, rest_commits, patches, reviews, methods, full_name)
+    /// await upload_graph(commits, tree, rest_commits, patches, reviews, methods, full_name)
     
     // Update the creating status of the repository
     fetch(
@@ -112,23 +112,23 @@ async function  fetch_data(repo_owner, repo_name, methods, commits, rest_commits
 
   // Simultaneously collect every required data
   const methods_fetched = get_methods( repo_owner, repo_name, methods, log, tokens[0], branch);
-  const commits_fetched = get_commits(repo_owner, repo_name, commits, log, tokens);
-  const rest_commits_fetched = get_rest_commits( repo_owner, repo_name, rest_commits, log, tokens);
-  const issues_and_prs_fetched = get_issues_and_prs( repo_owner, repo_name, issues, pulls, log, tokens);
-  const tree_fetched = get_tree( repo_owner, repo_name, branch, tree, log, tokens);
+  //const commits_fetched = get_commits(repo_owner, repo_name, commits, log, tokens);
+  // const rest_commits_fetched = get_rest_commits( repo_owner, repo_name, rest_commits, log, tokens);
+  // const issues_and_prs_fetched = get_issues_and_prs( repo_owner, repo_name, issues, pulls, log, tokens);
+  // const tree_fetched = get_tree( repo_owner, repo_name, branch, tree, log, tokens);
 
-  await issues_and_prs_fetched;
-  // Only after issues_and_prs_fetched done, fetch the PR patches
-  const patch_data_fetched =  get_patches(pulls, patches, tokens, repo_owner, repo_name, log);
-   const review_data_fetched =  get_reviews(pulls, reviews, tokens, repo_owner, repo_name,log);
+  // await issues_and_prs_fetched;
+  // // Only after issues_and_prs_fetched done, fetch the PR patches
+  // const patch_data_fetched =  get_patches(pulls, patches, tokens, repo_owner, repo_name, log);
+  //  const review_data_fetched =  get_reviews(pulls, reviews, tokens, repo_owner, repo_name,log);
 
-  // Wait for data fetching to end
-  await rest_commits_fetched;
-  await tree_fetched;
-  await methods_fetched
-  await commits_fetched;
-  await patch_data_fetched;
-  await review_data_fetched;
+  // // Wait for data fetching to end
+  // await rest_commits_fetched;
+  // await tree_fetched;
+   await methods_fetched
+  // await commits_fetched;
+  // await patch_data_fetched;
+  // await review_data_fetched;
  
   console.log("Data has been fetched");
 }
