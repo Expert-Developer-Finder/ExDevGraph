@@ -9,17 +9,20 @@ const getNeo4jCredentials = async (repoId)  => {
     let user;
     let password;
     if ( repoFullName.owner == "ceydas" && repoFullName.name == "exdev_test") {
-        // uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
-        // user = "neo4j"
-        // password = "kücük123"
+        // EXDEV Hesabınınki
+        uri = "neo4j+s://eb62724b.databases.neo4j.io:7687"
+        user = "neo4j"
+        password = "kücük123"
 
-        uri = "neo4j+s://8117a2ff.databases.neo4j.io:7687"
-        user = "neo4j"
-        password = "gwLRO3knpyBg60EYlofS0hxjXF2Pd7H8bsvKv9QZ5Mk"
-    } else {
-        uri =  "neo4j+s://8c4cdf6a.databases.neo4j.io"
-        user = "neo4j"
-        password = "büyük123"
+    } else if ( repoFullName.owner == "kondukto-io" && repoFullName.name == "kdt") {
+        // BORA'nınki
+        uri= "neo4j+s://8a39dd2d.databases.neo4j.io"
+        user="neo4j"
+        password="ceZS1QmXc5H1w8hSmqAjuVBsRQ4L3icFAVsqIcC1D-0"
+    }  else if ( repoFullName.owner == "GlobalMaksimum" && repoFullName.name == "sadedegel") {
+        uri="neo4j+s://deaa0ea2.databases.neo4j.io"
+        user="neo4j"
+        password="xFh8uvF48csUwAwuDG7LEGqfmH_BxCdLN0wLa9-9nWM"
     }
 
 
