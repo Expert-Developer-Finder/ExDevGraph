@@ -20,6 +20,10 @@ const getNeo4jCredentials = async (repoId)  => {
         user="neo4j"
         password="ceZS1QmXc5H1w8hSmqAjuVBsRQ4L3icFAVsqIcC1D-0"
     }  else if ( repoFullName.owner == "GlobalMaksimum" && repoFullName.name == "sadedegel") {
+<<<<<<< HEAD
+=======
+        //GLOBAL MAKSİMUM TUNANINKİ
+>>>>>>> 2116c55689c52d5861505ca2fc172c2c4d15b1f3
         uri="neo4j+s://deaa0ea2.databases.neo4j.io"
         user="neo4j"
         password="xFh8uvF48csUwAwuDG7LEGqfmH_BxCdLN0wLa9-9nWM"
@@ -32,9 +36,23 @@ const getNeo4jCredentials = async (repoId)  => {
 export const getRecommendations = async (req, response) => {
     var { source, path, repoId, methodSignature, repo} = req.body;
 
+    console.log(path);
+
+    if(path.indexOf("\\") != -1){
+        path = path.replaceAll("\\", "/");
+    }
+
+    if(path.indexOf("\\\\") != -1){
+        console.log("IF İci");
+        path = path.replaceAll("\\\\", "/");
+    }
+
+    
     if(path[0] == "/") {
         path = path.substring(1);
     }
+
+    console.log(path);
 
     var githubRepoCreatedAt = repo.githubRepoCreatedAt;
     var weightCommit = repo.weightCommit;
